@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.className} ${geistMono.className} bg-gray-100 text-gray-1200 antialiased h-[100dvh]`}
+        className={`${geistSans.className} ${geistMono.className} bg-gray-100 text-gray-1200 antialiased h-[100dvh] text-sm`}
       >
         {children}
       </body>

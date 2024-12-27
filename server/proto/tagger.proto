@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package tagger;
+
+option go_package = "./";
+
+service Tagger {
+    rpc SayHello(HelloRequest) returns (HelloResponse);
+}
+
+message HelloRequest {
+    string name = 1;
+}
+
+message HelloResponse {
+    string message = 1;
+}

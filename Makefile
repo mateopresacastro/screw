@@ -4,6 +4,11 @@ dev:
 install:
 	cd client && npm i && cd ../server && go mod download && air init
 
+compile:
+	protoc server/proto/*.proto \
+		--go_out=server/proto/gen \
+		--go-grpc_out=server/proto/gen \
+
 build:
 	docker build -t tagger .
 

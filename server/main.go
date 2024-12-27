@@ -1,10 +1,22 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
+
+	pb "tagger/proto/gen"
+
+	"google.golang.org/grpc"
 )
+
+const port = 3000
+
+var portStr = fmt.Sprintf(":%d", port)
 
 func main() {
 	if err := run(); err != nil {
@@ -13,18 +25,20 @@ func main() {
 	}
 }
 
+type server struct {
+	pb.UnimplementedTaggerServer
+}
+
+func (s *server) SayHello(_ context.Context, in *pb.HelloRequest) (*pb.HelloResponse, error) {
+	return &pb.HelloResponse{Message: "Hello " + in.GetName()}, nil
+}
+
 func run() error {
 	env := getEnv("ENV", "dev")
 	if env == "prod" {
 		go startFileServer()
 	}
-
-	http.HandleFunc("GET /api", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello world"))
-	})
-
-	slog.Info("API listening on port 3000")
-	return http.ListenAndServe(":3000", nil)
+	return startGrpcServer()
 }
 
 func getEnv(key, fallback string) string {
@@ -37,6 +51,17 @@ func getEnv(key, fallback string) string {
 func startFileServer() error {
 	dir := "/client/out"
 	http.Handle("GET /", http.FileServer(http.Dir(dir)))
-	slog.Info("Starting file server", "env", "prod", "port", "3000")
-	return http.ListenAndServe(":3000", nil)
+	slog.Info("Starting file server", "env", "prod", "port", port)
+	return http.ListenAndServe(portStr, nil)
+}
+
+func startGrpcServer() error {
+	lis, err := net.Listen("tcp", portStr)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterTaggerServer(s, &server{})
+	slog.Info("TCP server listening", "port", port)
+	return s.Serve(lis)
 }
