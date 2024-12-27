@@ -35,7 +35,7 @@ func getEnv(key, fallback string) string {
 }
 
 func startFileServer() error {
-	dir := "/client/dist"
+	dir := "/client/out"
 	http.Handle("GET /", http.FileServer(http.Dir(dir)))
 	slog.Info("Starting file server", "env", "prod", "port", "3000")
 	return http.ListenAndServe(":3000", nil)

@@ -14,7 +14,7 @@ COPY server/ .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o app .
 
 FROM scratch
-COPY --from=client /build/client/dist /client/dist
+COPY --from=client /build/client/out /client/out
 COPY --from=server /build/server/app /usr/bin/app
 ENV ENV=prod
 ENTRYPOINT ["/usr/bin/app"]
