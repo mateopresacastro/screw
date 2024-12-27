@@ -7,5 +7,5 @@ install:
 build:
 	docker build -t local_build .
 
-start:
+start: build
 	docker run -ti -p 3000:3000 local_build
