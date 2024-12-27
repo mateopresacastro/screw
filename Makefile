@@ -5,7 +5,7 @@ install:
 	cd client && npm i && cd ../server && go mod download && air init
 
 build:
-	docker build -t local_build .
+	docker build -t tagger .
 
 start: build
-	docker run -ti -p 3000:3000 local_build
+	docker run -ti -p 3000:3000 tagger
