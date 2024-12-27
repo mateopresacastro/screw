@@ -16,14 +16,13 @@ func main() {
 func run() error {
 	env := getEnv("ENV", "dev")
 	if env == "prod" {
-		return startFileServer()
+		go startFileServer()
 	}
 
 	http.HandleFunc("GET /api", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hello world"))
 	})
 
-	slog.Info("Running in development mode; file server is not started.")
 	slog.Info("API listening on port 3000")
 	return http.ListenAndServe(":3000", nil)
 }
@@ -38,6 +37,6 @@ func getEnv(key, fallback string) string {
 func startFileServer() error {
 	dir := "/client/dist"
 	http.Handle("/", http.FileServer(http.Dir(dir)))
-	slog.Info("Starting file server", "env", "prod", "port", ":3000")
+	slog.Info("Starting file server", "env", "prod", "port", "3000")
 	return http.ListenAndServe(":3000", nil)
 }
