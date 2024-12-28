@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.2
-// source: server/proto/tagger.proto
+// source: tagger.proto
 
 package __
 
@@ -117,5 +117,5 @@ var Tagger_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "server/proto/tagger.proto",
+	Metadata: "tagger.proto",
 }
