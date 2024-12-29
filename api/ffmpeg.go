@@ -61,23 +61,32 @@ func newFFMPEG(ctx context.Context, errChan chan error, done chan struct{}) (*ff
 
 func (f *ffmpeg) listenForErrors() {
 	scanner := bufio.NewScanner(f.stderr)
-	for scanner.Scan() {
-		if strings.Contains(scanner.Text(), "Error") ||
-			strings.Contains(scanner.Text(), "Invalid") {
-			f.errChan <- fmt.Errorf("stderr scanner error: %s", scanner.Text())
-		} else {
-			slog.Debug("ffmpeg output", "message", scanner.Text())
+	go func() {
+		for scanner.Scan() {
+			if strings.Contains(scanner.Text(), "Error") ||
+				strings.Contains(scanner.Text(), "Invalid") {
+				f.errChan <- fmt.Errorf("stderr scanner error: %s", scanner.Text())
+			} else {
+				slog.Debug("ffmpeg output", "message", scanner.Text())
+			}
 		}
-	}
+	}()
+
 	if err := scanner.Err(); err != nil {
 		f.errChan <- fmt.Errorf("stderr scanner error: %w", err)
 	}
 }
 
 func (f *ffmpeg) close() {
-	f.stderr.Close()
-	f.stdin.Close()
-	f.stdout.Close()
+	if f.stdin != nil {
+		f.stdin.Close()
+	}
+	if f.stdout != nil {
+		f.stdout.Close()
+	}
+	if f.stderr != nil {
+		f.stderr.Close()
+	}
 	slog.Info("ffmpeg clean up done! All good!")
 }
 
