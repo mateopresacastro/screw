@@ -2,6 +2,7 @@
 
 import useWebSocket from "@/app/use-ws";
 import NumberFlow from "@number-flow/react";
+import Link from "next/link";
 import { useState, type ChangeEvent } from "react";
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
   return (
     <div className="h-full flex flex-col items-start justify-center gap-4 max-w-md mx-auto px-4 md:px-0">
       <h1>SCREW</h1>
+      <Link href="http://localhost:3000/login/google">log in</Link>
       <input
         type="file"
         onChange={handleFileSelect}

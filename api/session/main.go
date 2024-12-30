@@ -1,10 +1,13 @@
 package session
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base32"
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"strings"
 	"tagg/store"
 	"time"
 )
@@ -17,15 +20,15 @@ const (
 type Manager struct {
 	store                   store.Store
 	sessionExpirationInDays int64
-	refreshThresholdDays    int64
+	refreshThresholdInDays  int64
 	isProd                  bool
 }
 
-func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresholdDays int64, isProd bool) *Manager {
+func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresholdInDays int64, isProd bool) *Manager {
 	return &Manager{
 		store:                   store,
 		sessionExpirationInDays: sessionExpirationInDays,
-		refreshThresholdDays:    refreshThresholdDays,
+		refreshThresholdInDays:  refreshThresholdInDays,
 		isProd:                  isProd,
 	}
 }
@@ -75,7 +78,7 @@ func (m *Manager) ValidateSessionToken(token string) (*SessionValidationResult, 
 		return nil, nil
 	}
 
-	thresholdDuration := time.Duration(m.refreshThresholdDays) * oneDayInHours * time.Hour
+	thresholdDuration := time.Duration(m.refreshThresholdInDays) * oneDayInHours * time.Hour
 	thresholdTime := expiresAt.Add(-thresholdDuration)
 
 	if now.After(thresholdTime) {
@@ -98,26 +101,54 @@ func (m *Manager) InvalidateUserSessions(userId int64) error {
 	return m.store.DeleteSessionByUserId(userId)
 }
 
-func SetSessionCookie(w http.ResponseWriter, token string, expiresAt time.Time, isProd bool) {
+func (m *Manager) SetSessionCookie(w http.ResponseWriter, token string, expiresAt int64) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
-		Secure:   isProd,
+		Secure:   m.isProd,
 		SameSite: http.SameSiteLaxMode,
-		Expires:  expiresAt,
+		Expires:  time.Unix(expiresAt, 0),
 	})
 }
 
-func DeleteSessionCookie(w http.ResponseWriter, isProd bool) {
+func (m *Manager) DeleteSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",
 		HttpOnly: true,
 		Path:     "/",
-		Secure:   isProd,
+		Secure:   m.isProd,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
+}
+
+func (m *Manager) GetCurrentSession(r *http.Request) (*SessionValidationResult, error) {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		return nil, fmt.Errorf("error getting session cookie: %w", err)
+	}
+
+	if cookie.Value == "" {
+		return nil, fmt.Errorf("session cookie is empty")
+	}
+
+	result, err := m.ValidateSessionToken(cookie.Value)
+	if err != nil {
+		return nil, fmt.Errorf("error validating session token: %w", err)
+	}
+
+	return result, nil
+}
+
+func (m *Manager) GenerateRandomSessionToken() (token string, err error) {
+	bytes := make([]byte, 25)
+	_, err = rand.Read(bytes)
+	if err != nil {
+		return "", fmt.Errorf("error generating random bytes: %w", err)
+	}
+	token = strings.ToLower(base32.StdEncoding.EncodeToString(bytes))
+	return token, nil
 }

@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -92,6 +93,8 @@ func (s *sqliteStore) CreateUser(user *User) (userId int64, err error) {
 	return userId, nil
 }
 
+var ErrUserNotFound = errors.New("user not found")
+
 func (s *sqliteStore) GetUserByGoogleId(googleId string) (user *User, err error) {
 	user = &User{}
 	err = s.db.QueryRow(`
@@ -101,7 +104,7 @@ func (s *sqliteStore) GetUserByGoogleId(googleId string) (user *User, err error)
     `, googleId).Scan(&user.ID, &user.GoogleID, &user.Email, &user.Name, &user.Picture)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("user not found")
+		return nil, ErrUserNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error getting user: %w", err)
