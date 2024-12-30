@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"os/exec"
-	"strings"
 )
 
 type ffmpeg struct {
@@ -21,6 +19,8 @@ type ffmpeg struct {
 
 func newFFMPEG(ctx context.Context, errChan chan error, done chan struct{}) (*ffmpeg, error) {
 	cmd := exec.CommandContext(ctx, "ffmpeg",
+		"-hide_banner",
+		"-loglevel", "error",
 		"-i", "pipe:0",
 		"-af", "rubberband=pitch=0.80",
 		"-c:a", "aac",
@@ -47,7 +47,7 @@ func newFFMPEG(ctx context.Context, errChan chan error, done chan struct{}) (*ff
 		slog.Error("Failed to start FFmpeg", "error", err)
 		return nil, err
 	}
-	newFFMPEG := &ffmpeg{
+	f := &ffmpeg{
 		stdin:   stdin,
 		stdout:  stdout,
 		stderr:  stderr,
@@ -55,25 +55,24 @@ func newFFMPEG(ctx context.Context, errChan chan error, done chan struct{}) (*ff
 		errChan: errChan,
 		done:    done,
 	}
-	go newFFMPEG.listenForErrors()
-	return newFFMPEG, nil
+	go f.monitor()
+	return f, nil
 }
 
-func (f *ffmpeg) listenForErrors() {
-	scanner := bufio.NewScanner(f.stderr)
-	go func() {
-		for scanner.Scan() {
-			if strings.Contains(scanner.Text(), "Error") ||
-				strings.Contains(scanner.Text(), "Invalid") {
-				f.errChan <- fmt.Errorf("stderr scanner error: %s", scanner.Text())
-			} else {
-				slog.Debug("ffmpeg output", "message", scanner.Text())
-			}
+func (f *ffmpeg) monitor() {
+	buf := make([]byte, 1024)
+	for {
+		n, err := f.stderr.Read(buf)
+		if n > 0 {
+			f.errChan <- fmt.Errorf("ffmpeg error: %s", string(buf[:n]))
+			return
 		}
-	}()
-
-	if err := scanner.Err(); err != nil {
-		f.errChan <- fmt.Errorf("stderr scanner error: %w", err)
+		if err != nil {
+			if err != io.EOF {
+				f.errChan <- fmt.Errorf("stderr read error: %w", err)
+			}
+			return
+		}
 	}
 }
 
@@ -86,6 +85,12 @@ func (f *ffmpeg) close() {
 	}
 	if f.stderr != nil {
 		f.stderr.Close()
+	}
+	if f.errChan != nil {
+		close(f.errChan)
+	}
+	if f.done != nil {
+		close(f.done)
 	}
 	slog.Info("ffmpeg clean up done! All good!")
 }

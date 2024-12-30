@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
+    "@number-flow/react": "^0.4.4",
     "@tanstack/react-query": "^5.62.11",
     "browser-headers": "^0.4.1",
     "next": "15.1.3",

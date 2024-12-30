@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -34,13 +35,19 @@ func ws(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed to upgrade connection", "error", err)
 		return
 	}
+	defer conn.Close()
 	slog.Info("Upgraded")
 
 	ctx, cancel := context.WithCancel(r.Context())
-	defer conn.Close()
 	defer cancel()
-	var writeMu sync.Mutex
 
+	err = conn.NetConn().SetDeadline(time.Now().Add(time.Minute))
+	if err != nil {
+		slog.Error("Error setting connection deadline", "error", err)
+		return
+	}
+
+	var writeMu sync.Mutex
 	errChan := make(chan error, 3)
 	done := make(chan struct{})
 
