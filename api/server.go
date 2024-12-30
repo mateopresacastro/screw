@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"tagg/ws"
 )
 
 const (
@@ -19,7 +20,7 @@ func startServer(env string) error {
 		mux.Handle("/", fileServer)
 		slog.Info("Registered static file server", "dir", dir)
 	}
-	mux.HandleFunc("/ws", ws)
+	mux.HandleFunc("/ws", ws.Ws)
 	slog.Info("Server is listening", "port", port, "env", env)
 	return http.ListenAndServe(port, mux)
 }

@@ -1,4 +1,4 @@
-module tagger
+module tagg
 
 go 1.23.4
 
