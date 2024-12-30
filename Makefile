@@ -12,3 +12,6 @@ build:
 
 start: build
 	docker run -ti -p 3000:3000 tagger
+
+test:
+	cd api && go test ./...
