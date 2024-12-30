@@ -9,7 +9,7 @@ type User struct {
 }
 
 type Session struct {
-	ID        int64 `json:"id"`
-	UserID    int64 `json:"user_id"`
-	ExpiresAt int64 `json:"expires_at"`
+	ID        string `json:"id"`
+	UserID    int64  `json:"user_id"`
+	ExpiresAt int64  `json:"expires_at"`
 }

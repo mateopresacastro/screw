@@ -167,14 +167,14 @@ func TestCreateSession(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
-	sessionId := int64(12345)
+	sessionId := "12345"
 	expiresAt := time.Now().Add(24 * time.Hour).Unix()
 	session, err := store.CreateSession(sessionId, userId, expiresAt)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
 	if session.ID != sessionId {
-		t.Errorf("Expected session ID %d, got %d", sessionId, session.ID)
+		t.Errorf("Expected session ID %s, got %s", sessionId, session.ID)
 	}
 	if session.UserID != userId {
 		t.Errorf("Expected user ID %d, got %d", userId, session.UserID)
@@ -183,7 +183,7 @@ func TestCreateSession(t *testing.T) {
 		t.Errorf("Expected expires at %d, got %d", expiresAt, session.ExpiresAt)
 	}
 
-	_, err = store.CreateSession(int64(67890), int64(9999), expiresAt)
+	_, err = store.CreateSession("123453", int64(9999), expiresAt)
 	if err == nil {
 		t.Error("Expected error when creating session for non-existent user, got nil")
 	}
@@ -209,7 +209,7 @@ func TestDeleteSessionByUserId(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
-	sessionId := int64(12345)
+	sessionId := "1234"
 	expiresAt := time.Now().Add(24 * time.Hour).Unix()
 	_, err = store.CreateSession(sessionId, userId, expiresAt)
 	if err != nil {
@@ -247,7 +247,7 @@ func TestDeleteSessionBySessionId(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
-	sessionId := int64(12345)
+	sessionId := "12345"
 	expiresAt := time.Now().Add(24 * time.Hour).Unix()
 	_, err = store.CreateSession(sessionId, userId, expiresAt)
 	if err != nil {
@@ -264,7 +264,7 @@ func TestDeleteSessionBySessionId(t *testing.T) {
 		t.Error("Expected error when getting deleted session, got nil")
 	}
 
-	err = store.DeleteSessionBySessionId(int64(9999))
+	err = store.DeleteSessionBySessionId("000000000")
 	if err != nil {
 		t.Error("Expected no error when deleting non-existent session")
 	}
@@ -285,7 +285,7 @@ func TestGetSessionAndUserBySessionId(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
-	sessionId := int64(12345)
+	sessionId := "12345"
 	expiresAt := time.Now().Add(24 * time.Hour).Unix()
 	_, err = store.CreateSession(sessionId, userId, expiresAt)
 	if err != nil {
@@ -298,7 +298,7 @@ func TestGetSessionAndUserBySessionId(t *testing.T) {
 	}
 
 	if session.ID != sessionId {
-		t.Errorf("Expected session ID %d, got %d", sessionId, session.ID)
+		t.Errorf("Expected session ID %s, got %s", sessionId, session.ID)
 	}
 	if session.UserID != userId {
 		t.Errorf("Expected user ID %d, got %d", userId, session.UserID)
@@ -317,7 +317,7 @@ func TestGetSessionAndUserBySessionId(t *testing.T) {
 		t.Errorf("Expected Email %s, got %s", testUser.Email, user.Email)
 	}
 
-	_, _, err = store.GetSessionAndUserBySessionId(int64(9999))
+	_, _, err = store.GetSessionAndUserBySessionId("000000")
 	if err == nil {
 		t.Error("Expected error when getting non-existent session, got nil")
 	}
@@ -338,7 +338,7 @@ func TestRefreshSession(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
-	sessionId := int64(12345)
+	sessionId := "12345"
 	expiresAt := time.Now().Add(24 * time.Hour).Unix()
 	_, err = store.CreateSession(sessionId, userId, expiresAt)
 	if err != nil {
@@ -359,7 +359,7 @@ func TestRefreshSession(t *testing.T) {
 		t.Errorf("Expected expires at %d, got %d", newExpiresAt, session.ExpiresAt)
 	}
 
-	err = store.RefreshSession(int64(9999), newExpiresAt)
+	err = store.RefreshSession("000000000", newExpiresAt)
 	if err != nil {
 		t.Error("Expected no error when refreshing non-existent session")
 	}
@@ -386,7 +386,7 @@ func TestConcurrentSessionOperations(t *testing.T) {
 	baseTime := time.Now()
 	for i := 0; i < sessionCount; i++ {
 		go func(i int) {
-			sessionId := int64(i + 1)
+			sessionId := fmt.Sprintf("sessionId-%d", i)
 			expiresAt := baseTime.Add(time.Duration(i) * time.Hour).Unix()
 			_, err := store.CreateSession(sessionId, userId, expiresAt)
 			if err != nil {
