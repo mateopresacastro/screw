@@ -185,7 +185,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existingUser, err := g.store.GetUserByGoogleId(userData.ID)
-	if err == nil {
+	if err == nil && existingUser != nil {
 		newSessionToken, err := g.sessionMgr.GenerateRandomSessionToken()
 		if err != nil {
 			slog.Error("Failed to generate session token for existing user", "error", err, "user_id", existingUser.ID)
