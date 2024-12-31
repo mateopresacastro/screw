@@ -85,8 +85,6 @@ func (f *FFMPEG) Close() {
 	f.Stdin.Close()
 	f.Stdout.Close()
 	f.Stderr.Close()
-	close(f.ErrChan)
-	close(f.Done)
 	slog.Info("ffmpeg clean up done! All good!")
 }
 

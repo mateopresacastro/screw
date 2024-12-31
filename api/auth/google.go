@@ -237,7 +237,73 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	g.sessionMgr.SetSessionCookie(w, newSessionToken, session.ExpiresAt)
-	http.Redirect(w, r, "http://localhost:3001", http.StatusFound)
+	http.Redirect(w, r, "http://localhost:3001", http.StatusPermanentRedirect)
+	return
+}
+
+func (g *google) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3001")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+	result, err := g.sessionMgr.GetCurrentSession(r)
+	if err != nil {
+		slog.Error("error getting session", "error", err)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if result == nil || result.User == nil {
+		http.Error(w, "No active session", http.StatusUnauthorized)
+		return
+	}
+
+	response := struct {
+		Name    string `json:"name"`
+		Email   string `json:"email"`
+		Picture string `json:"picture"`
+	}{
+		Name:    result.User.Name,
+		Email:   result.User.Email,
+		Picture: result.User.Picture,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("error encoding response", "error", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (g *google) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3001")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+	result, err := g.sessionMgr.GetCurrentSession(r)
+	if err != nil {
+		slog.Error("error getting session", "error", err)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if result == nil || result.User == nil {
+		http.Error(w, "No active session", http.StatusUnauthorized)
+		return
+	}
+	err = g.sessionMgr.InvalidateSession(result.Session.ID)
+	if err != nil {
+		slog.Error("error getting session", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	g.sessionMgr.DeleteSessionCookie(w)
+	w.WriteHeader(http.StatusOK)
+	return
 }
 
 func createState() (string, error) {

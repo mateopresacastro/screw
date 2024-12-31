@@ -13,7 +13,7 @@ COPY api/ .
 RUN GOOS=linux go build -trimpath -ldflags="-s -w" -o app .
 
 FROM debian:stable-slim
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ffmpeg sqlite3 && rm -rf /var/lib/apt/lists/*
 COPY --from=frontend /build/frontend/out /frontend/out
 COPY --from=api /build/api/app /usr/bin/app
 ENV ENV=prod

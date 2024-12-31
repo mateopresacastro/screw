@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -75,7 +76,7 @@ func (s *sqliteStore) initializeTables() error {
 func (s *sqliteStore) CreateUser(user *User) (userId int64, err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
+	slog.Info("db: creating user", "user", user)
 	query := `
         INSERT INTO user (google_id, email, name, picture)
         VALUES (?, ?, ?, ?)
@@ -90,6 +91,7 @@ func (s *sqliteStore) CreateUser(user *User) (userId int64, err error) {
 	if err != nil {
 		return 0, fmt.Errorf("error getting last insert id: %w", err)
 	}
+	slog.Info("db: user created")
 	return userId, nil
 }
 
@@ -109,6 +111,8 @@ func (s *sqliteStore) GetUserByGoogleId(googleId string) (user *User, err error)
 	if err != nil {
 		return nil, fmt.Errorf("error getting user: %w", err)
 	}
+
+	slog.Info("db: got user by google id ", "user", user)
 	return user, nil
 }
 
@@ -130,6 +134,7 @@ func (s *sqliteStore) DeleteUser(userId int64) (err error) {
 		return fmt.Errorf("user not found")
 	}
 
+	slog.Info("db: deleted user")
 	return nil
 }
 
@@ -157,6 +162,7 @@ func (s *sqliteStore) CreateSession(sessionId string, userId int64, expiresAt in
 		UserID:    userId,
 		ExpiresAt: expiresAt,
 	}
+	slog.Info("db: session created")
 	return session, nil
 }
 
@@ -167,6 +173,8 @@ func (s *sqliteStore) DeleteSessionByUserId(userId int64) (err error) {
 	if err != nil {
 		return fmt.Errorf("error deleting session by userId: %w", err)
 	}
+
+	slog.Info("db: session deleted")
 	return nil
 }
 
@@ -177,6 +185,7 @@ func (s *sqliteStore) DeleteSessionBySessionId(sessionId string) (err error) {
 	if err != nil {
 		return fmt.Errorf("error deleting session by sessionId: %w", err)
 	}
+	slog.Info("db: session deleted")
 	return nil
 }
 
@@ -211,6 +220,7 @@ func (s *sqliteStore) GetSessionAndUserBySessionId(sessionId string) (session *S
 		return nil, nil, fmt.Errorf("error getting session and user: %w", err)
 	}
 
+	slog.Info("db: got session")
 	return session, user, nil
 }
 
@@ -222,5 +232,6 @@ func (s *sqliteStore) RefreshSession(sessionId string, newExpiresAt int64) (err 
 	if err != nil {
 		return fmt.Errorf("error updating session: %w", err)
 	}
+	slog.Info("db: session rereshed")
 	return nil
 }

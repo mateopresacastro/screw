@@ -11,7 +11,7 @@ build:
 	docker build -t tagger .
 
 start: build
-	docker run -ti -p 3000:3000 tagger
+	docker run --env-file ./api/.env -ti -p 3000:3000 tagger
 
 test:
 	cd api && go test ./...
