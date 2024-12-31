@@ -243,15 +243,10 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *google) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
-	result, err := g.sessionMgr.GetCurrentSession(r)
-	if err != nil {
-		slog.Error("error getting session", "error", err)
+	result, ok := session.GetSessionFromContext(r.Context())
+	if !ok {
+		slog.Error("no session data on context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if result == nil || result.User == nil {
-		http.Error(w, "No active session", http.StatusUnauthorized)
 		return
 	}
 
@@ -275,18 +270,14 @@ func (g *google) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *google) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	result, err := g.sessionMgr.GetCurrentSession(r)
-	if err != nil {
-		slog.Error("error getting session", "error", err)
+	result, ok := session.GetSessionFromContext(r.Context())
+	if !ok {
+		slog.Error("no session data on context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if result == nil || result.User == nil {
-		http.Error(w, "No active session", http.StatusUnauthorized)
-		return
-	}
-	err = g.sessionMgr.InvalidateSession(result.Session.ID)
+	err := g.sessionMgr.InvalidateSession(result.Session.ID)
 	if err != nil {
 		slog.Error("error getting session", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

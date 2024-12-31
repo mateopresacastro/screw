@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base32"
@@ -13,7 +14,10 @@ import (
 	"time"
 )
 
+const ()
+
 const (
+	SessionContextKey = "session"
 	sessionCookieName = "session"
 	oneDayInHours     = 24
 )
@@ -157,4 +161,9 @@ func (m *Manager) GenerateRandomSessionToken() (token string, err error) {
 	}
 	token = strings.ToLower(base32.StdEncoding.EncodeToString(bytes))
 	return token, nil
+}
+
+func GetSessionFromContext(ctx context.Context) (*SessionValidationResult, bool) {
+	session, ok := ctx.Value(SessionContextKey).(*SessionValidationResult)
+	return session, ok
 }

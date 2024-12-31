@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -77,19 +78,41 @@ func Protect(protectedRoutes map[string]struct{}, sm *session.Manager) Middlewar
 				http.Error(w, "No active session", http.StatusUnauthorized)
 				return
 			}
-
-			next.ServeHTTP(w, r)
+			// add user data to context
+			ctx := context.WithValue(r.Context(), session.SessionContextKey, result)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
 func RateLimit(rps float64, burst int) Middleware {
+	type limiterEntry struct {
+		limiter  *rate.Limiter
+		lastSeen time.Time
+	}
+
 	limiters := &sync.Map{}
+
+	cleanup := time.NewTicker(5 * time.Minute)
+	go func() {
+		for range cleanup.C {
+			now := time.Now()
+			slog.Info("cheking reate limiter stored ips")
+			limiters.Range(func(key, value any) bool {
+				entry := value.(*limiterEntry)
+				if now.Sub(entry.lastSeen) > time.Hour {
+					slog.Info("found 1 hour old IP on rate limiter - deleting")
+					limiters.Delete(key)
+				}
+				return true
+			})
+		}
+	}()
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := r.Header.Get("X-Forwarded-For")
 			if ip == "" {
-				// Handle IPv6 [::1]:port format
 				ip = r.RemoteAddr
 				if strings.Contains(ip, "[") {
 					ip = strings.Split(strings.Split(ip, "]")[0], "[")[1]
@@ -98,20 +121,32 @@ func RateLimit(rps float64, burst int) Middleware {
 				}
 			}
 
-			limiter, _ := limiters.LoadOrStore(ip, rate.NewLimiter(rate.Limit(rps), burst))
-			l := limiter.(*rate.Limiter)
-			if !l.Allow() {
-				slog.Error("too many requests")
+			var entry *limiterEntry
+			value, loaded := limiters.Load(ip)
+			if !loaded {
+				entry = &limiterEntry{
+					limiter:  rate.NewLimiter(rate.Limit(rps), burst),
+					lastSeen: time.Now(),
+				}
+				limiters.Store(ip, entry)
+			} else {
+				entry = value.(*limiterEntry)
+				entry.lastSeen = time.Now()
+			}
+
+			if !entry.limiter.Allow() {
+				slog.Error("too many requests", "ip", ip)
 				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 				return
 			}
 
 			slog.Info("rate limiter state",
 				"ip", ip,
-				"tokens", l.Tokens(),
-				"limit", l.Limit(),
-				"burst", l.Burst(),
+				"tokens", entry.limiter.Tokens(),
+				"limit", entry.limiter.Limit(),
+				"burst", entry.limiter.Burst(),
 			)
+
 			next.ServeHTTP(w, r)
 		})
 	}
