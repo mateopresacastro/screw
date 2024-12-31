@@ -174,7 +174,7 @@ func (s *sqliteStore) DeleteSessionByUserId(userId int64) (err error) {
 		return fmt.Errorf("error deleting session by userId: %w", err)
 	}
 
-	slog.Info("db: session deleted")
+	slog.Info("db: all old session deleted for user")
 	return nil
 }
 

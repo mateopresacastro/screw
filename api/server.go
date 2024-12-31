@@ -40,7 +40,7 @@ func startServer(env string) error {
 	)
 
 	mux.Handle("/", http.FileServer(http.Dir(dir)))
-	mux.HandleFunc("/ws", ws.Ws)
+	mux.HandleFunc("/ws", ws.Handler)
 	mux.HandleFunc("GET /login/google", google.HandleLogin)
 	mux.HandleFunc("GET /login/google/callback", google.HandleCallBack)
 	mux.HandleFunc("GET /login/session", google.HandleCurrentSession)

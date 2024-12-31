@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"tagg/store"
@@ -34,6 +35,11 @@ func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresho
 }
 
 func (m *Manager) CreateSession(token string, userId int64) (*store.Session, error) {
+	err := m.InvalidateUserSessions(userId)
+	if err != nil {
+		slog.Warn("error deleting old sessions", "err", err)
+	}
+
 	sessionId := generateSessionId(token)
 	expiresAt := m.newExpiresAt()
 	session, err := m.store.CreateSession(sessionId, userId, expiresAt)

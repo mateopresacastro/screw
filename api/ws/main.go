@@ -41,7 +41,7 @@ func writeMessage(messageType int, data []byte, conn *websocket.Conn, writeMu *s
 	return conn.WriteMessage(messageType, data)
 }
 
-func Ws(w http.ResponseWriter, r *http.Request) {
+func Handler(w http.ResponseWriter, r *http.Request) {
 	slog.Info("New websocket connection! Trying to upgrade...")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
