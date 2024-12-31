@@ -242,50 +242,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (g *google) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
-	result, ok := session.GetSessionFromContext(r.Context())
-	if !ok {
-		slog.Error("no session data on context")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 
-	response := struct {
-		Name    string `json:"name"`
-		Email   string `json:"email"`
-		Picture string `json:"picture"`
-	}{
-		Name:    result.User.Name,
-		Email:   result.User.Email,
-		Picture: result.User.Picture,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("error encoding response", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (g *google) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	result, ok := session.GetSessionFromContext(r.Context())
-	if !ok {
-		slog.Error("no session data on context")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	err := g.sessionMgr.InvalidateSession(result.Session.ID)
-	if err != nil {
-		slog.Error("error getting session", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	g.sessionMgr.DeleteSessionCookie(w)
-	return
-}
 
 func createState() (string, error) {
 	bytes := make([]byte, 16)

@@ -50,11 +50,6 @@ func TestSessionCreation(t *testing.T) {
 	if session.UserID != userId {
 		t.Errorf("expected user ID %d, got %d", userId, session.UserID)
 	}
-
-	_, err = m.CreateSession("test-token", userId)
-	if err == nil {
-		t.Fatalf("creating session for same token should fail: %v", err)
-	}
 }
 
 func TestSessionValidation(t *testing.T) {

@@ -43,8 +43,8 @@ func startServer(env string) error {
 	mux.HandleFunc("/ws", ws.Handler)
 	mux.HandleFunc("GET /login/google", google.HandleLogin)
 	mux.HandleFunc("GET /login/google/callback", google.HandleCallBack)
-	mux.HandleFunc("GET /login/session", google.HandleCurrentSession)
-	mux.HandleFunc("POST /logout", google.HandleLogout)
+	mux.HandleFunc("GET /login/session", sessionManager.HandleCurrentSession)
+	mux.HandleFunc("POST /logout", sessionManager.HandleLogout)
 
 	CORSAllowed := map[string]struct{}{
 		"http://localhost:3001": {},
@@ -58,7 +58,7 @@ func startServer(env string) error {
 
 	server := mw.Chain(
 		mux,
-		mw.RateLimit(10, 30), // add 10 requests per second to bucket, 30 in burst
+		mw.RateLimit(15, 50), // add 15 requests per second to bucket, 50 in burst for chunk request
 		mw.Logger(),
 		mw.CORS(CORSAllowed),
 		mw.Protect(protectedRoutes, sessionManager),

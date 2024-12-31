@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -166,4 +167,49 @@ func (m *Manager) GenerateRandomSessionToken() (token string, err error) {
 func GetSessionFromContext(ctx context.Context) (*SessionValidationResult, bool) {
 	session, ok := ctx.Value(SessionContextKey).(*SessionValidationResult)
 	return session, ok
+}
+
+func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
+	result, ok := GetSessionFromContext(r.Context())
+	if !ok {
+		slog.Error("no session data on context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	response := struct {
+		Name    string `json:"name"`
+		Email   string `json:"email"`
+		Picture string `json:"picture"`
+	}{
+		Name:    result.User.Name,
+		Email:   result.User.Email,
+		Picture: result.User.Picture,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		slog.Error("error encoding response", "error", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (m *Manager) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	result, ok := GetSessionFromContext(r.Context())
+	if !ok {
+		slog.Error("no session data on context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	err := m.InvalidateSession(result.Session.ID)
+	if err != nil {
+		slog.Error("error getting session", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	m.DeleteSessionCookie(w)
+	return
 }
