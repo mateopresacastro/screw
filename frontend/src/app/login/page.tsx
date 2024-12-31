@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+
 export default function Login() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row">

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"tagg/auth"
+	mw "tagg/middleware"
 	"tagg/session"
 	"tagg/store"
 	"tagg/ws"
@@ -19,14 +20,10 @@ const (
 	dir  = "/frontend/out"
 )
 
+var portStr = fmt.Sprintf(":%d", port)
+
 func startServer(env string) error {
-	port := fmt.Sprintf(":%d", port)
 	mux := http.NewServeMux()
-	if env == "prod" {
-		fileServer := http.FileServer(http.Dir(dir))
-		mux.Handle("/", fileServer)
-		slog.Info("Registered static file server", "dir", dir)
-	}
 	store, err := store.NewFromEnv(env)
 	if err != nil {
 		log.Panicln(err)
@@ -41,11 +38,32 @@ func startServer(env string) error {
 		store,
 		sessionManager,
 	)
+
+	mux.Handle("/", http.FileServer(http.Dir(dir)))
 	mux.HandleFunc("/ws", ws.Ws)
 	mux.HandleFunc("GET /login/google", google.HandleLogin)
 	mux.HandleFunc("GET /login/google/callback", google.HandleCallBack)
 	mux.HandleFunc("GET /login/session", google.HandleCurrentSession)
 	mux.HandleFunc("POST /logout", google.HandleLogout)
+
+	CORSAllowed := map[string]struct{}{
+		"http://localhost:3001": {},
+	}
+
+	protectedRoutes := map[string]struct{}{
+		"/login/session": {},
+		"/logout":        {},
+		"/ws":            {},
+	}
+
+	server := mw.Chain(
+		mux,
+		mw.RateLimit(10, 30), // add 10 requests per second to bucket, 30 in burst
+		mw.Logger(),
+		mw.CORS(CORSAllowed),
+		mw.Protect(protectedRoutes, sessionManager),
+	)
+
 	slog.Info("Server is listening", "port", port, "env", env)
-	return http.ListenAndServe(port, mux)
+	return http.ListenAndServe(portStr, server)
 }

@@ -21,6 +21,11 @@ const (
 	googleOAuthStateCookieName = "google_oauth_state"
 )
 
+var scopes = []string{
+	"https://www.googleapis.com/auth/userinfo.profile",
+	"https://www.googleapis.com/auth/userinfo.email",
+}
+
 type google struct {
 	clientId     string
 	clientSecret string
@@ -66,10 +71,6 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	query.Set("redirect_uri", g.callbackURL)
 	query.Set("response_type", "code")
 
-	scopes := []string{
-		"https://www.googleapis.com/auth/userinfo.profile",
-		"https://www.googleapis.com/auth/userinfo.email",
-	}
 	query.Set("scope", strings.Join(scopes, " "))
 
 	authorizationURL.RawQuery = query.Encode()
@@ -242,11 +243,6 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *google) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3001")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-
 	result, err := g.sessionMgr.GetCurrentSession(r)
 	if err != nil {
 		slog.Error("error getting session", "error", err)
@@ -279,11 +275,6 @@ func (g *google) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *google) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3001")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-
 	result, err := g.sessionMgr.GetCurrentSession(r)
 	if err != nil {
 		slog.Error("error getting session", "error", err)
@@ -302,7 +293,6 @@ func (g *google) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	g.sessionMgr.DeleteSessionCookie(w)
-	w.WriteHeader(http.StatusOK)
 	return
 }
 
