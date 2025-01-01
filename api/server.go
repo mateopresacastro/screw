@@ -39,6 +39,7 @@ func startServer(env string) error {
 		sessionManager,
 	)
 	upload := upload.New(store)
+	ws := ws.New(store)
 
 	mux.Handle("/", http.FileServer(http.Dir(dir)))
 	mux.HandleFunc("/ws", ws.Handler)

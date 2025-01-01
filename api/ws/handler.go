@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"sync"
 	"tagg/ffmpeg"
+	"tagg/session"
+	"tagg/store"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -23,10 +25,11 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type metadata struct {
-	FileSize int64  `json:"fileSize"`
-	FileName string `json:"fileName"`
-	MimeType string `json:"mimeType"`
+type Metadata struct {
+	FileSize int64   `json:"fileSize"`
+	FileName string  `json:"fileName"`
+	MimeType string  `json:"mimeType"`
+	BPM      float32 `json:"bpm"`
 }
 
 type progressMessage struct {
@@ -40,8 +43,29 @@ func writeMessage(messageType int, data []byte, conn *websocket.Conn, writeMu *s
 	return conn.WriteMessage(messageType, data)
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {
-	slog.Info("New websocket connection! Trying to upgrade...")
+type WS struct {
+	store store.Store
+}
+
+func New(store store.Store) *WS {
+	return &WS{store: store}
+}
+
+func (ws *WS) Handler(w http.ResponseWriter, r *http.Request) {
+	data, ok := session.FromContext(r.Context())
+	if !ok {
+		slog.Error("No session data on context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	tag, err := ws.store.TagByUserID(data.User.ID)
+	if err != nil {
+		slog.Error("Error getting tag")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("New websocket connection - trying to upgrade")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("Failed to upgrade connection", "error", err)
@@ -50,40 +74,67 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	slog.Info("Upgraded")
 
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
-
-	err = conn.NetConn().SetDeadline(time.Now().Add(time.Minute))
+	err = conn.NetConn().SetDeadline(time.Now().Add(2 * time.Minute))
 	if err != nil {
 		slog.Error("Error setting connection deadline", "error", err)
 		return
 	}
 
+	messageType, message, err := conn.ReadMessage()
+	if err != nil {
+		slog.Error("Error reading initial message", "error", err)
+		return
+	}
+
+	var meta Metadata
+	if messageType != websocket.TextMessage {
+		slog.Error("First message must be metadata")
+		return
+	}
+
+	if err := json.Unmarshal(message, &meta); err != nil {
+		slog.Error("Error parsing metadata", "error", err)
+		return
+	}
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
 	var writeMu sync.Mutex
 	errChan := make(chan error, 3)
 	done := make(chan struct{})
+	opts := ffmpeg.Options{
+		BPM:           meta.BPM,
+		BarsInterval:  2,
+		DropOffset:    7,
+		WatermarkGain: 0.5,
+	}
 
-	ffmpeg, err := ffmpeg.New(ctx, errChan, done)
+	ffmpeg, err := ffmpeg.New(ctx, errChan, done, tag.FilePath, opts)
 	if err != nil {
 		return
 	}
-	defer ffmpeg.Close()
 
-	go readWebSocketAndPipeToFFMPEG(ctx, ffmpeg, conn, &writeMu)
+	defer func() {
+		ffmpeg.Close()
+		slog.Info("Websocket connection ended")
+	}()
+
+	go readWebSocketAndPipeToFFMPEG(ctx, ffmpeg, conn, &writeMu, meta.FileSize, meta.FileName)
 	go readFFMPEGAndWriteToSocket(ctx, ffmpeg, conn, &writeMu)
 
 	slog.Info("Listening to websocket. Waiting for processing completion or errors.")
 	select {
 	case err := <-errChan:
 		slog.Error("Stream processing error", "error", err)
-		cancel()
+		return
 	case <-done:
 		slog.Info("Processing finished gracefully")
-		cancel()
+		return
 	case <-ctx.Done():
 		slog.Info("The context was cancelled")
+		return
 	}
-	slog.Info("Websocket connection ended")
 }
 
 func readFFMPEGAndWriteToSocket(
@@ -125,10 +176,10 @@ func readWebSocketAndPipeToFFMPEG(
 	ffmpeg *ffmpeg.FFMPEG,
 	conn *websocket.Conn,
 	writeMu *sync.Mutex,
+	fileSize int64,
+	fileName string,
 ) {
 	var receivedBytes int64
-	var fileSize int64 = 0
-	var fileName string
 
 	logTicker := time.NewTicker(2 * time.Second)
 	defer logTicker.Stop()
@@ -154,50 +205,45 @@ func readWebSocketAndPipeToFFMPEG(
 				ffmpeg.ErrChan <- fmt.Errorf("websocket read error: %w", err)
 				return
 			}
-			if messageType == websocket.TextMessage {
-				var metadata metadata
-				if err := json.Unmarshal(message, &metadata); err != nil {
-					ffmpeg.ErrChan <- fmt.Errorf("error parsing metadata from websocket: %w", err)
-				}
-				fileSize = metadata.FileSize
-				fileName = metadata.FileName
-				slog.Info("Received file metadata",
-					"size", metadata.FileSize,
-					"name", metadata.FileName)
-				continue
+
+			if messageType != websocket.BinaryMessage {
+				ffmpeg.ErrChan <- fmt.Errorf("unexpected message type: %v", messageType)
+				return
 			}
-			if messageType == websocket.BinaryMessage {
-				if _, err := ffmpeg.Write(message); err != nil {
-					slog.Error("error while writing to ffmpeg stdin", "err", err)
-					return
-				}
-				receivedBytes += int64(len(message))
-				progress := float64(receivedBytes) / float64(fileSize) * 100
-				progressMsg := progressMessage{
-					Type:     "progress",
-					Progress: progress,
-				}
-				progressJSON, err := json.Marshal(progressMsg)
-				if err != nil {
-					ffmpeg.ErrChan <- fmt.Errorf("error parsing progress message: %w", err)
-					return
-				}
-				if err := writeMessage(websocket.TextMessage, progressJSON, conn, writeMu); err != nil {
-					ffmpeg.ErrChan <- fmt.Errorf("Failed to send progress: %w", err)
-					return
-				}
-				lastProgress = progress
-				select {
-				// Log on every tick
-				case <-logTicker.C:
-					slog.Info("Processing",
-						"name", fileName,
-						"bytes", receivedBytes,
-						"fileSize", fileSize,
-						"progress", math.Round(lastProgress))
-				default:
-					continue
-				}
+
+			if _, err := ffmpeg.Write(message); err != nil {
+				slog.Error("error while writing to ffmpeg stdin", "err", err)
+				ffmpeg.ErrChan <- fmt.Errorf("error while writing to ffmpeg stdin: %w", err)
+				return
+			}
+
+			receivedBytes += int64(len(message))
+			progress := float64(receivedBytes) / float64(fileSize) * 100
+			progressMsg := progressMessage{
+				Type:     "progress",
+				Progress: progress,
+			}
+
+			progressJSON, err := json.Marshal(progressMsg)
+			if err != nil {
+				ffmpeg.ErrChan <- fmt.Errorf("error parsing progress message: %w", err)
+				return
+			}
+			if err := writeMessage(websocket.TextMessage, progressJSON, conn, writeMu); err != nil {
+				ffmpeg.ErrChan <- fmt.Errorf("Failed to send progress: %w", err)
+				return
+			}
+			lastProgress = progress
+			select {
+			// Log on every tick
+			case <-logTicker.C:
+				slog.Info("Processing",
+					"name", fileName,
+					"bytes", receivedBytes,
+					"fileSize", fileSize,
+					"progress", math.Round(lastProgress))
+			default:
+				continue
 			}
 		}
 	}

@@ -87,6 +87,9 @@ func (s *sqliteStore) initializeTables() error {
 			file_path TEXT NOT NULL UNIQUE
 		)
 	`)
+	if err != nil {
+		return fmt.Errorf("error creating tag table: %w", err)
+	}
 
 	return nil
 }
@@ -274,4 +277,23 @@ func (s *sqliteStore) CreateTag(tag *Tag) error {
 	}
 	slog.Info("db: tag created")
 	return nil
+}
+
+func (s *sqliteStore) TagByUserID(userID int64) (*Tag, error) {
+	tag := &Tag{}
+	err := s.db.QueryRow(`
+			SELECT id, file_path, user_id
+			FROM tag
+			WHERE user_id = ?
+		`, userID).Scan(&tag.ID, &tag.FilePath, &tag.UserID)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("tag not found: %w", err)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error getting tag: %w", err)
+	}
+
+	slog.Info("db: got tag by userID", "tag", tag)
+	return tag, nil
 }
