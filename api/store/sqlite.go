@@ -21,6 +21,16 @@ func newSQLiteStore(path string) (Store, error) {
 		return nil, fmt.Errorf("error opening database: %w", err)
 	}
 
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("error enabling WAL mode: %w", err)
+	}
+
+	if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("error enabling foreign keys: %w", err)
+	}
+
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("error connecting to database: %w", err)
@@ -82,8 +92,6 @@ func (s *sqliteStore) initializeTables() error {
 }
 
 func (s *sqliteStore) CreateUser(user *User) (int64, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	slog.Info("db: creating user", "user", user)
 	query := `
         INSERT INTO user (google_id, email, name, picture)
@@ -125,9 +133,6 @@ func (s *sqliteStore) UserByGoogleID(googleID string) (*User, error) {
 }
 
 func (s *sqliteStore) DeleteUser(userID int64) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	result, err := s.db.Exec("DELETE FROM user WHERE id = ?", userID)
 	if err != nil {
 		return fmt.Errorf("error deleting user: %w", err)
@@ -147,11 +152,14 @@ func (s *sqliteStore) DeleteUser(userID int64) error {
 }
 
 func (s *sqliteStore) CreateSession(sessionID string, userID int64, expiresAt int64) (*Session, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
 
 	var exists bool
-	err := s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM user WHERE id = ?)", userID).Scan(&exists)
+	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM user WHERE id = ?)", userID).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("error checking user existence: %w", err)
 	}
@@ -160,9 +168,13 @@ func (s *sqliteStore) CreateSession(sessionID string, userID int64, expiresAt in
 	}
 
 	query := "INSERT INTO session (id, user_id, expires_at) VALUES (?, ?, ?)"
-	_, err = s.db.Exec(query, sessionID, userID, expiresAt)
+	_, err = tx.Exec(query, sessionID, userID, expiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("error creating session: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("error committing transaction: %w", err)
 	}
 
 	session := &Session{
@@ -175,8 +187,6 @@ func (s *sqliteStore) CreateSession(sessionID string, userID int64, expiresAt in
 }
 
 func (s *sqliteStore) DeleteSessionByUserID(userID int64) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	_, err := s.db.Exec("DELETE FROM session WHERE user_id = ?", userID)
 	if err != nil {
 		return fmt.Errorf("error deleting session by userID: %w", err)
@@ -187,8 +197,6 @@ func (s *sqliteStore) DeleteSessionByUserID(userID int64) error {
 }
 
 func (s *sqliteStore) DeleteSessionBySessionID(sessionID string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	_, err := s.db.Exec("DELETE FROM session WHERE id = ?", sessionID)
 	if err != nil {
 		return fmt.Errorf("error deleting session by sessionID: %w", err)
@@ -198,9 +206,6 @@ func (s *sqliteStore) DeleteSessionBySessionID(sessionID string) error {
 }
 
 func (s *sqliteStore) SessionAndUserBySessionID(sessionID string) (*Session, *User, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	session := &Session{}
 	user := &User{}
 
@@ -233,8 +238,6 @@ func (s *sqliteStore) SessionAndUserBySessionID(sessionID string) (*Session, *Us
 }
 
 func (s *sqliteStore) RefreshSession(sessionID string, newExpiresAt int64) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	query := "UPDATE session SET expires_at = ? WHERE id = ?"
 	_, err := s.db.Exec(query, newExpiresAt, sessionID)
 	if err != nil {
@@ -245,8 +248,6 @@ func (s *sqliteStore) RefreshSession(sessionID string, newExpiresAt int64) error
 }
 
 func (s *sqliteStore) DeleteTag(tagID string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	_, err := s.db.Exec("DELETE FROM tag WHERE id = ?", tagID)
 	if err != nil {
 		return fmt.Errorf("error deleting tag: %w", err)
@@ -256,8 +257,6 @@ func (s *sqliteStore) DeleteTag(tagID string) error {
 }
 
 func (s *sqliteStore) CreateTag(tag *Tag) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	slog.Info("db: creating tag", "tag", tag)
 	query := `
         INSERT INTO tag (id, user_id, file_path)
