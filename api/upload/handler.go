@@ -1,37 +1,36 @@
 package upload
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
+	"tagg/cryptoutil"
+	"tagg/session"
+	"tagg/store"
 )
 
-func generateFileTagId(dir string) string {
-	hash := sha256.Sum256([]byte(dir))
-	return hex.EncodeToString(hash[:])
+type Upload struct {
+	store store.Store
 }
 
-func Handle(w http.ResponseWriter, r *http.Request) {
-	slog.Info("Received request",
-		"content-type", r.Header.Get("Content-Type"),
-		"method", r.Method)
+func New(store store.Store) *Upload {
+	return &Upload{store: store}
+}
 
-	err := r.ParseMultipartForm(32 << 20)
+func (u *Upload) Handle(w http.ResponseWriter, r *http.Request) {
+	result, ok := session.FromContext(r.Context())
+	if !ok {
+		slog.Error("no session data on context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	err := r.ParseMultipartForm(32 << 20) // 32mb
 	if err != nil {
 		slog.Error("Error parsing multipart form", "err", err)
 		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
-	}
-
-	// Debug the form fields
-	if r.MultipartForm != nil {
-		slog.Info("Form fields",
-			"file_keys", fmt.Sprintf("%v", r.MultipartForm.File),
-			"value_keys", fmt.Sprintf("%v", r.MultipartForm.Value))
 	}
 
 	file, _, err := r.FormFile("file")
@@ -58,12 +57,39 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		err := os.Remove(temp.Name())
 		if err != nil {
 			slog.Info("Error deleting temp file", "temp", temp.Name())
-			return
 		}
 		http.Error(w, "Error copying data", http.StatusInternalServerError)
 		return
 	}
 
 	slog.Info("Success", "temp file", temp.Name())
-	w.WriteHeader(http.StatusOK)
+	ref, err := cryptoutil.Random()
+	if err != nil {
+		err := os.Remove(temp.Name())
+		if err != nil {
+			slog.Info("Error deleting temp file", "temp", temp.Name())
+		}
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	res := struct {
+		Ref string `json:"ref"`
+	}{Ref: ref}
+
+	id := cryptoutil.ID(ref)
+	tag := &store.Tag{ID: id, UserID: result.User.ID, FilePath: temp.Name()}
+	err = u.store.CreateTag(tag)
+	if err != nil {
+		slog.Error("error creating tag")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		slog.Error("error encoding response", "error", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
 }

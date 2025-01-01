@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const ()
-
 const (
 	SessionContextKey = "session"
 	sessionCookieName = "session"
@@ -145,13 +143,13 @@ func (m *Manager) GetCurrentSession(r *http.Request) (*SessionValidationResult, 
 	return result, nil
 }
 
-func GetSessionFromContext(ctx context.Context) (*SessionValidationResult, bool) {
+func FromContext(ctx context.Context) (*SessionValidationResult, bool) {
 	session, ok := ctx.Value(SessionContextKey).(*SessionValidationResult)
 	return session, ok
 }
 
 func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
-	result, ok := GetSessionFromContext(r.Context())
+	result, ok := FromContext(r.Context())
 	if !ok {
 		slog.Error("no session data on context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -178,7 +176,7 @@ func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	result, ok := GetSessionFromContext(r.Context())
+	result, ok := FromContext(r.Context())
 	if !ok {
 		slog.Error("no session data on context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)

@@ -70,6 +70,14 @@ func (s *sqliteStore) initializeTables() error {
 		return fmt.Errorf("error creating session table: %w", err)
 	}
 
+	_, err = s.db.Exec(`
+		CREATE TABlE IF NOT EXISTS tag (
+			id TEXT NOT NULL PRIMARY KEY,
+		    user_id INTEGER NOT NULL REFERENCES user(id),
+			file_path TEXT NOT NULL UNIQUE
+		)
+	`)
+
 	return nil
 }
 
@@ -233,5 +241,38 @@ func (s *sqliteStore) RefreshSession(sessionID string, newExpiresAt int64) error
 		return fmt.Errorf("error updating session: %w", err)
 	}
 	slog.Info("db: session rereshed")
+	return nil
+}
+
+func (s *sqliteStore) DeleteTag(tagID string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	_, err := s.db.Exec("DELETE FROM tag WHERE id = ?", tagID)
+	if err != nil {
+		return fmt.Errorf("error deleting tag: %w", err)
+	}
+	slog.Info("DB: Tag deleted")
+	return nil
+}
+
+func (s *sqliteStore) CreateTag(tag *Tag) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	slog.Info("db: creating tag", "tag", tag)
+	query := `
+        INSERT INTO tag (id, user_id, file_path)
+        VALUES (?, ?, ?)
+    `
+	var result sql.Result
+	result, err := s.db.Exec(query, tag.ID, tag.UserID, tag.FilePath)
+	if err != nil {
+		return fmt.Errorf("error creating tag: %w", err)
+	}
+
+	_, err = result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("error getting last insert id: %w", err)
+	}
+	slog.Info("db: tag created")
 	return nil
 }
