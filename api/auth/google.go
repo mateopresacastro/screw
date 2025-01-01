@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"tagg/cryptoutil"
 	"tagg/session"
 	"tagg/store"
 	"time"
@@ -109,7 +110,6 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 	})
 
-	basicAuth := base64.StdEncoding.EncodeToString([]byte(g.clientID + ":" + g.clientSecret))
 	formData := url.Values{
 		"grant_type":   {"authorization_code"},
 		"code":         {code},
@@ -123,6 +123,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	basicAuth := base64.StdEncoding.EncodeToString([]byte(g.clientID + ":" + g.clientSecret))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Basic "+basicAuth)
@@ -187,7 +188,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 
 	existingUser, err := g.store.UserByGoogleID(userData.ID)
 	if err == nil && existingUser != nil {
-		newSessionToken, err := g.sessionMgr.GenerateRandomSessionToken()
+		newSessionToken, err := cryptoutil.Random()
 		if err != nil {
 			slog.Error("Failed to generate session token for existing user", "error", err, "user_id", existingUser.ID)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -224,7 +225,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newSessionToken, err := g.sessionMgr.GenerateRandomSessionToken()
+	newSessionToken, err := cryptoutil.Random()
 	if err != nil {
 		slog.Error("Failed to generate session token for new user", "error", err, "user_id", newUserID)
 		http.Error(w, "Internal error", http.StatusInternalServerError)

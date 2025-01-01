@@ -10,6 +10,7 @@ import (
 	mw "tagg/middleware"
 	"tagg/session"
 	"tagg/store"
+	"tagg/upload"
 	"tagg/ws"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -44,6 +45,7 @@ func startServer(env string) error {
 	mux.HandleFunc("GET /login/google/callback", google.HandleCallBack)
 	mux.HandleFunc("GET /login/session", sessionManager.HandleCurrentSession)
 	mux.HandleFunc("POST /logout", sessionManager.HandleLogout)
+	mux.HandleFunc("POST /upload", upload.Handle)
 
 	CORSAllowed := map[string]struct{}{
 		"http://localhost:3001": {},
@@ -53,6 +55,7 @@ func startServer(env string) error {
 		"/login/session": {},
 		"/logout":        {},
 		"/ws":            {},
+		"/upload":        {},
 	}
 
 	server := mw.Chain(

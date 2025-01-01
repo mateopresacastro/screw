@@ -1,6 +1,7 @@
 "use client";
 
 import useAuth from "@/app/auth";
+import useUpload from "@/app/upload";
 import useWebSocket from "@/app/use-ws";
 import NumberFlow from "@number-flow/react";
 import Link from "next/link";
@@ -8,6 +9,7 @@ import { useState, type ChangeEvent } from "react";
 
 export default function Home() {
   const [files, setFiles] = useState<File[] | null>(null);
+  const mutation = useUpload();
   const { logout, query } = useAuth();
 
   function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
@@ -19,6 +21,15 @@ export default function Home() {
     setFiles(arrOfFiles);
   }
 
+  function handleTagSelect(e: ChangeEvent<HTMLInputElement>) {
+    const { files } = e.target;
+    if (!files) return;
+    const arrOfFiles = Array.from(files).filter((file) => file instanceof File);
+    const selectedFile = arrOfFiles.at(0);
+    if (!selectedFile) return;
+    mutation.mutate(selectedFile);
+  }
+  const { isPending: isUploading } = mutation;
   return (
     <div className="h-full flex flex-col items-start justify-center gap-4 max-w-md mx-auto px-4 md:px-0">
       <h1>SCREW</h1>
@@ -36,7 +47,14 @@ export default function Home() {
       ) : (
         <Link href="http://localhost:3000/login/google">log in</Link>
       )}
-
+      {isUploading ? <p>uplaoding tag...</p> : <p>select tag</p>}
+      <input
+        type="file"
+        onChange={handleTagSelect}
+        accept="audio/*"
+        className="w-full pb-10"
+        max={5}
+      />
       <input
         type="file"
         onChange={handleFileSelect}

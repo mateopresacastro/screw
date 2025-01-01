@@ -2,15 +2,11 @@ package session
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base32"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
+	"tagg/cryptoutil"
 	"tagg/store"
 	"time"
 )
@@ -45,18 +41,13 @@ func (m *Manager) CreateSession(token string, userID int64) (*store.Session, err
 		slog.Warn("error deleting old sessions", "err", err)
 	}
 
-	sessionID := generateSessionID(token)
+	sessionID := cryptoutil.ID(token)
 	expiresAt := m.newExpiresAt()
 	session, err := m.store.CreateSession(sessionID, userID, expiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("error creating session: %w", err)
 	}
 	return session, nil
-}
-
-func generateSessionID(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(hash[:])
 }
 
 type SessionValidationResult struct {
@@ -73,7 +64,7 @@ func (m *Manager) ValidateSessionToken(token string) (*SessionValidationResult, 
 		return nil, fmt.Errorf("empty session token")
 	}
 
-	sessionID := generateSessionID(token)
+	sessionID := cryptoutil.ID(token)
 	session, user, err := m.store.SessionAndUserBySessionID(sessionID)
 	if err != nil {
 		return nil, err
@@ -152,16 +143,6 @@ func (m *Manager) GetCurrentSession(r *http.Request) (*SessionValidationResult, 
 	}
 
 	return result, nil
-}
-
-func (m *Manager) GenerateRandomSessionToken() (string, error) {
-	bytes := make([]byte, 25)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", fmt.Errorf("error generating random bytes: %w", err)
-	}
-	token := strings.ToLower(base32.StdEncoding.EncodeToString(bytes))
-	return token, nil
 }
 
 func GetSessionFromContext(ctx context.Context) (*SessionValidationResult, bool) {
