@@ -1,14 +1,14 @@
 package store
 
 type Store interface {
-	CreateUser(user *User) (userId int64, err error)
-	GetUserByGoogleId(googleId string) (user *User, err error)
-	DeleteUser(userId int64) (err error)
-	CreateSession(sessionId string, userId int64, expiresAt int64) (session *Session, err error)
-	DeleteSessionByUserId(userId int64) (err error)
-	DeleteSessionBySessionId(sessionId string) (err error)
-	GetSessionAndUserBySessionId(sessionId string) (session *Session, user *User, err error)
-	RefreshSession(sessionId string, newExpiresAt int64) (err error)
+	CreateUser(user *User) (int64, error)
+	UserByGoogleID(googleID string) (*User, error)
+	DeleteUser(userID int64) error
+	CreateSession(sessionID string, userID int64, expiresAt int64) (*Session, error)
+	DeleteSessionByUserID(userID int64) (err error)
+	DeleteSessionBySessionID(sessionID string) (err error)
+	SessionAndUserBySessionID(sessionID string) (*Session, *User, error)
+	RefreshSession(sessionID string, newExpiresAt int64) error
 }
 
 func NewFromEnv(env string) (Store, error) {

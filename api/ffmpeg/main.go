@@ -88,16 +88,16 @@ func (f *FFMPEG) Close() {
 	slog.Info("ffmpeg clean up done! All good!")
 }
 
-func (f *FFMPEG) Write(p []byte) (n int, err error) {
-	n, err = f.Stdin.Write(p)
+func (f *FFMPEG) Write(p []byte) (int, error) {
+	n, err := f.Stdin.Write(p)
 	if err != nil {
 		f.ErrChan <- err
 	}
 	return n, err
 }
 
-func (f *FFMPEG) Read(p []byte) (n int, err error) {
-	n, err = f.Stdout.Read(p)
+func (f *FFMPEG) Read(p []byte) (int, error) {
+	n, err := f.Stdout.Read(p)
 	if err != nil {
 		if err == io.EOF {
 			f.Done <- struct{}{}

@@ -7,14 +7,14 @@ interface ProgressMessage {
   totalSize: number;
 }
 
+type Status = "streaming" | "creatingUrl" | "init" | "error";
+
 export default function useWebSocket(file: File) {
   const [processProgress, setProcessProgress] = useState<number>(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [status, setStatus] = useState<Status>("init");
   const audioChunks = useRef<Blob[]>([]);
-  const [status, setStatus] = useState<
-    "streaming" | "creatingUrl" | "init" | "error"
-  >("init");
 
   const isStreaming = status === "streaming";
   const isError = status === "error";

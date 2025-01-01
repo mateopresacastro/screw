@@ -35,7 +35,6 @@ type progressMessage struct {
 }
 
 func writeMessage(messageType int, data []byte, conn *websocket.Conn, writeMu *sync.Mutex) error {
-	// you can't write concurrently to a websocket se we need to use a mutex
 	writeMu.Lock()
 	defer writeMu.Unlock()
 	return conn.WriteMessage(messageType, data)

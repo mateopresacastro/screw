@@ -39,22 +39,22 @@ func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresho
 	}
 }
 
-func (m *Manager) CreateSession(token string, userId int64) (*store.Session, error) {
-	err := m.InvalidateUserSessions(userId)
+func (m *Manager) CreateSession(token string, userID int64) (*store.Session, error) {
+	err := m.InvalidateUserSessions(userID)
 	if err != nil {
 		slog.Warn("error deleting old sessions", "err", err)
 	}
 
-	sessionId := generateSessionId(token)
+	sessionID := generateSessionID(token)
 	expiresAt := m.newExpiresAt()
-	session, err := m.store.CreateSession(sessionId, userId, expiresAt)
+	session, err := m.store.CreateSession(sessionID, userID, expiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("error creating session: %w", err)
 	}
 	return session, nil
 }
 
-func generateSessionId(token string) string {
+func generateSessionID(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])
 }
@@ -73,8 +73,8 @@ func (m *Manager) ValidateSessionToken(token string) (*SessionValidationResult, 
 		return nil, fmt.Errorf("empty session token")
 	}
 
-	sessionId := generateSessionId(token)
-	session, user, err := m.store.GetSessionAndUserBySessionId(sessionId)
+	sessionID := generateSessionID(token)
+	session, user, err := m.store.SessionAndUserBySessionID(sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (m *Manager) ValidateSessionToken(token string) (*SessionValidationResult, 
 	expiresAt := time.Unix(session.ExpiresAt, 0)
 
 	if now.After(expiresAt) {
-		if err := m.store.DeleteSessionBySessionId(session.ID); err != nil {
+		if err := m.store.DeleteSessionBySessionID(session.ID); err != nil {
 			return nil, fmt.Errorf("error deleting expired session: %w", err)
 		}
 		return nil, nil
@@ -104,12 +104,12 @@ func (m *Manager) ValidateSessionToken(token string) (*SessionValidationResult, 
 	return &SessionValidationResult{Session: session, User: user}, nil
 }
 
-func (m *Manager) InvalidateSession(sessionId string) error {
-	return m.store.DeleteSessionBySessionId(sessionId)
+func (m *Manager) InvalidateSession(sessionID string) error {
+	return m.store.DeleteSessionBySessionID(sessionID)
 }
 
-func (m *Manager) InvalidateUserSessions(userId int64) error {
-	return m.store.DeleteSessionByUserId(userId)
+func (m *Manager) InvalidateUserSessions(userID int64) error {
+	return m.store.DeleteSessionByUserID(userID)
 }
 
 func (m *Manager) SetSessionCookie(w http.ResponseWriter, token string, expiresAt int64) {
@@ -154,13 +154,13 @@ func (m *Manager) GetCurrentSession(r *http.Request) (*SessionValidationResult, 
 	return result, nil
 }
 
-func (m *Manager) GenerateRandomSessionToken() (token string, err error) {
+func (m *Manager) GenerateRandomSessionToken() (string, error) {
 	bytes := make([]byte, 25)
-	_, err = rand.Read(bytes)
+	_, err := rand.Read(bytes)
 	if err != nil {
 		return "", fmt.Errorf("error generating random bytes: %w", err)
 	}
-	token = strings.ToLower(base32.StdEncoding.EncodeToString(bytes))
+	token := strings.ToLower(base32.StdEncoding.EncodeToString(bytes))
 	return token, nil
 }
 

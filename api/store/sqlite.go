@@ -73,7 +73,7 @@ func (s *sqliteStore) initializeTables() error {
 	return nil
 }
 
-func (s *sqliteStore) CreateUser(user *User) (userId int64, err error) {
+func (s *sqliteStore) CreateUser(user *User) (int64, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	slog.Info("db: creating user", "user", user)
@@ -82,28 +82,28 @@ func (s *sqliteStore) CreateUser(user *User) (userId int64, err error) {
         VALUES (?, ?, ?, ?)
     `
 	var result sql.Result
-	result, err = s.db.Exec(query, user.GoogleID, user.Email, user.Name, user.Picture)
+	result, err := s.db.Exec(query, user.GoogleID, user.Email, user.Name, user.Picture)
 	if err != nil {
 		return 0, fmt.Errorf("error creating user: %w", err)
 	}
 
-	userId, err = result.LastInsertId()
+	userID, err := result.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("error getting last insert id: %w", err)
 	}
 	slog.Info("db: user created")
-	return userId, nil
+	return userID, nil
 }
 
 var ErrUserNotFound = errors.New("user not found")
 
-func (s *sqliteStore) GetUserByGoogleId(googleId string) (user *User, err error) {
-	user = &User{}
-	err = s.db.QueryRow(`
+func (s *sqliteStore) UserByGoogleID(googleID string) (*User, error) {
+	user := &User{}
+	err := s.db.QueryRow(`
         SELECT id, google_id, email, name, picture
         FROM user
         WHERE google_id = ?
-    `, googleId).Scan(&user.ID, &user.GoogleID, &user.Email, &user.Name, &user.Picture)
+    `, googleID).Scan(&user.ID, &user.GoogleID, &user.Email, &user.Name, &user.Picture)
 
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
@@ -116,11 +116,11 @@ func (s *sqliteStore) GetUserByGoogleId(googleId string) (user *User, err error)
 	return user, nil
 }
 
-func (s *sqliteStore) DeleteUser(userId int64) (err error) {
+func (s *sqliteStore) DeleteUser(userID int64) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	result, err := s.db.Exec("DELETE FROM user WHERE id = ?", userId)
+	result, err := s.db.Exec("DELETE FROM user WHERE id = ?", userID)
 	if err != nil {
 		return fmt.Errorf("error deleting user: %w", err)
 	}
@@ -138,12 +138,12 @@ func (s *sqliteStore) DeleteUser(userId int64) (err error) {
 	return nil
 }
 
-func (s *sqliteStore) CreateSession(sessionId string, userId int64, expiresAt int64) (session *Session, err error) {
+func (s *sqliteStore) CreateSession(sessionID string, userID int64, expiresAt int64) (*Session, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	var exists bool
-	err = s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM user WHERE id = ?)", userId).Scan(&exists)
+	err := s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM user WHERE id = ?)", userID).Scan(&exists)
 	if err != nil {
 		return nil, fmt.Errorf("error checking user existence: %w", err)
 	}
@@ -152,49 +152,49 @@ func (s *sqliteStore) CreateSession(sessionId string, userId int64, expiresAt in
 	}
 
 	query := "INSERT INTO session (id, user_id, expires_at) VALUES (?, ?, ?)"
-	_, err = s.db.Exec(query, sessionId, userId, expiresAt)
+	_, err = s.db.Exec(query, sessionID, userID, expiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("error creating session: %w", err)
 	}
 
-	session = &Session{
-		ID:        sessionId,
-		UserID:    userId,
+	session := &Session{
+		ID:        sessionID,
+		UserID:    userID,
 		ExpiresAt: expiresAt,
 	}
 	slog.Info("db: session created")
 	return session, nil
 }
 
-func (s *sqliteStore) DeleteSessionByUserId(userId int64) (err error) {
+func (s *sqliteStore) DeleteSessionByUserID(userID int64) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	_, err = s.db.Exec("DELETE FROM session WHERE user_id = ?", userId)
+	_, err := s.db.Exec("DELETE FROM session WHERE user_id = ?", userID)
 	if err != nil {
-		return fmt.Errorf("error deleting session by userId: %w", err)
+		return fmt.Errorf("error deleting session by userID: %w", err)
 	}
 
 	slog.Info("db: all old session deleted for user")
 	return nil
 }
 
-func (s *sqliteStore) DeleteSessionBySessionId(sessionId string) (err error) {
+func (s *sqliteStore) DeleteSessionBySessionID(sessionID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	_, err = s.db.Exec("DELETE FROM session WHERE id = ?", sessionId)
+	_, err := s.db.Exec("DELETE FROM session WHERE id = ?", sessionID)
 	if err != nil {
-		return fmt.Errorf("error deleting session by sessionId: %w", err)
+		return fmt.Errorf("error deleting session by sessionID: %w", err)
 	}
 	slog.Info("db: session deleted")
 	return nil
 }
 
-func (s *sqliteStore) GetSessionAndUserBySessionId(sessionId string) (session *Session, user *User, err error) {
+func (s *sqliteStore) SessionAndUserBySessionID(sessionID string) (*Session, *User, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	session = &Session{}
-	user = &User{}
+	session := &Session{}
+	user := &User{}
 
 	query := `
         SELECT session.id, session.user_id, session.expires_at, user.id, user.google_id, user.email, user.name, user.picture
@@ -202,7 +202,7 @@ func (s *sqliteStore) GetSessionAndUserBySessionId(sessionId string) (session *S
         INNER JOIN user ON session.user_id = user.id
         WHERE session.id = ?
     `
-	err = s.db.QueryRow(query, sessionId).Scan(
+	err := s.db.QueryRow(query, sessionID).Scan(
 		&session.ID,
 		&session.UserID,
 		&session.ExpiresAt,
@@ -224,11 +224,11 @@ func (s *sqliteStore) GetSessionAndUserBySessionId(sessionId string) (session *S
 	return session, user, nil
 }
 
-func (s *sqliteStore) RefreshSession(sessionId string, newExpiresAt int64) (err error) {
+func (s *sqliteStore) RefreshSession(sessionID string, newExpiresAt int64) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	query := "UPDATE session SET expires_at = ? WHERE id = ?"
-	_, err = s.db.Exec(query, newExpiresAt, sessionId)
+	_, err := s.db.Exec(query, newExpiresAt, sessionID)
 	if err != nil {
 		return fmt.Errorf("error updating session: %w", err)
 	}

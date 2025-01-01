@@ -27,7 +27,7 @@ var scopes = []string{
 }
 
 type google struct {
-	clientId     string
+	clientID     string
 	clientSecret string
 	callbackURL  string
 	store        store.Store
@@ -41,9 +41,9 @@ type tokenResponse struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
-func NewGoogle(clientId, clientSecret, callbackURL string, store store.Store, sessionMgr *session.Manager) *google {
+func NewGoogle(clientID, clientSecret, callbackURL string, store store.Store, sessionMgr *session.Manager) *google {
 	return &google{
-		clientId:     clientId,
+		clientID:     clientID,
 		clientSecret: clientSecret,
 		callbackURL:  callbackURL,
 		store:        store,
@@ -67,7 +67,7 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	query := authorizationURL.Query()
 	query.Set("state", state)
-	query.Set("client_id", g.clientId)
+	query.Set("client_id", g.clientID)
 	query.Set("redirect_uri", g.callbackURL)
 	query.Set("response_type", "code")
 
@@ -109,7 +109,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 	})
 
-	basicAuth := base64.StdEncoding.EncodeToString([]byte(g.clientId + ":" + g.clientSecret))
+	basicAuth := base64.StdEncoding.EncodeToString([]byte(g.clientID + ":" + g.clientSecret))
 	formData := url.Values{
 		"grant_type":   {"authorization_code"},
 		"code":         {code},
@@ -185,7 +185,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingUser, err := g.store.GetUserByGoogleId(userData.ID)
+	existingUser, err := g.store.UserByGoogleID(userData.ID)
 	if err == nil && existingUser != nil {
 		newSessionToken, err := g.sessionMgr.GenerateRandomSessionToken()
 		if err != nil {
@@ -241,8 +241,6 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "http://localhost:3001", http.StatusPermanentRedirect)
 	return
 }
-
-
 
 func createState() (string, error) {
 	bytes := make([]byte, 16)

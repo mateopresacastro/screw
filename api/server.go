@@ -26,8 +26,7 @@ func startServer(env string) error {
 	mux := http.NewServeMux()
 	store, err := store.NewFromEnv(env)
 	if err != nil {
-		log.Panicln(err)
-		panic("Something went wrong creating the store")
+		log.Panicln("something went wrong creating the store:", err)
 	}
 
 	sessionManager := session.NewManager(store, 30, 15, env == "prod")

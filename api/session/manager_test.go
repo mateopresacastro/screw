@@ -21,13 +21,13 @@ func setupTest(t *testing.T) (store.Store, *store.User, int64) {
 		Picture:  "https://example.com/picture.jpg",
 	}
 
-	userId, err := s.CreateUser(testUser)
+	userID, err := s.CreateUser(testUser)
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
-	testUser.ID = userId
+	testUser.ID = userID
 
-	return s, testUser, userId
+	return s, testUser, userID
 }
 
 func cleanupTestDB(t *testing.T) {
@@ -38,17 +38,17 @@ func cleanupTestDB(t *testing.T) {
 }
 
 func TestSessionCreation(t *testing.T) {
-	s, _, userId := setupTest(t)
+	s, _, userID := setupTest(t)
 	defer cleanupTestDB(t)
 	m := session.NewManager(s, 30, 15, false)
 
-	session, err := m.CreateSession("test-token", userId)
+	session, err := m.CreateSession("test-token", userID)
 	if err != nil {
 		t.Fatalf("failed to create session: %v", err)
 	}
 
-	if session.UserID != userId {
-		t.Errorf("expected user ID %d, got %d", userId, session.UserID)
+	if session.UserID != userID {
+		t.Errorf("expected user ID %d, got %d", userID, session.UserID)
 	}
 }
 
@@ -85,11 +85,11 @@ func TestSessionValidation(t *testing.T) {
 }
 
 func TestSessionExpiration(t *testing.T) {
-	s, _, userId := setupTest(t)
+	s, _, userID := setupTest(t)
 	defer cleanupTestDB(t)
 	m := session.NewManager(s, 1, 1, false)
 
-	session, err := m.CreateSession("test-token", userId)
+	session, err := m.CreateSession("test-token", userID)
 	if err != nil {
 		t.Fatalf("failed to create session: %v", err)
 	}
@@ -145,10 +145,10 @@ func TestSessionInvalidation(t *testing.T) {
 
 func TestSessionRefresh(t *testing.T) {
 	t.Run("successful refresh", func(t *testing.T) {
-		s, _, userId := setupTest(t)
+		s, _, userID := setupTest(t)
 		defer cleanupTestDB(t)
 		m := session.NewManager(s, 0, 0, false)
-		session, err := m.CreateSession("test-token", userId)
+		session, err := m.CreateSession("test-token", userID)
 		if err != nil {
 			t.Fatalf("failed to create session: %v", err)
 		}
@@ -168,10 +168,10 @@ func TestSessionRefresh(t *testing.T) {
 	})
 
 	t.Run("expired session", func(t *testing.T) {
-		s, _, userId := setupTest(t)
+		s, _, userID := setupTest(t)
 		defer cleanupTestDB(t)
 		m := session.NewManager(s, 0, 0, false)
-		session, err := m.CreateSession("test-token", userId)
+		session, err := m.CreateSession("test-token", userID)
 		if err != nil {
 			t.Fatalf("failed to create session: %v", err)
 		}
@@ -203,10 +203,10 @@ func TestSessionRefresh(t *testing.T) {
 	})
 
 	t.Run("refresh threshold check", func(t *testing.T) {
-		s, _, userId := setupTest(t)
+		s, _, userID := setupTest(t)
 		defer cleanupTestDB(t)
 		m := session.NewManager(s, 30, 7, false)
-		session, err := m.CreateSession("test-token", userId)
+		session, err := m.CreateSession("test-token", userID)
 		if err != nil {
 			t.Fatalf("failed to create session: %v", err)
 		}
