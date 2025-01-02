@@ -101,8 +101,6 @@ func (ws *WS) Handler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var writeMu sync.Mutex
-	errChan := make(chan error, 3)
-	done := make(chan struct{})
 	opts := ffmpeg.Options{
 		BPM:           meta.BPM,
 		BarsInterval:  2,
@@ -110,7 +108,7 @@ func (ws *WS) Handler(w http.ResponseWriter, r *http.Request) {
 		WatermarkGain: 0.5,
 	}
 
-	ffmpeg, err := ffmpeg.New(ctx, errChan, done, tag.FilePath, opts)
+	ffmpeg, err := ffmpeg.New(ctx, tag.FilePath, opts)
 	if err != nil {
 		return
 	}
@@ -125,10 +123,10 @@ func (ws *WS) Handler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("Listening to websocket. Waiting for processing completion or errors.")
 	select {
-	case err := <-errChan:
+	case err := <-ffmpeg.ErrChan:
 		slog.Error("Stream processing error", "error", err)
 		return
-	case <-done:
+	case <-ffmpeg.Done:
 		slog.Info("Processing finished gracefully")
 		return
 	case <-ctx.Done():
@@ -179,11 +177,13 @@ func readWebSocketAndPipeToFFMPEG(
 	fileSize int64,
 	fileName string,
 ) {
-	var receivedBytes int64
+	var (
+		receivedBytes int64
+		lastProgress  float64
+	)
 
 	logTicker := time.NewTicker(2 * time.Second)
 	defer logTicker.Stop()
-	var lastProgress float64
 
 	for {
 		select {

@@ -26,7 +26,7 @@ type Options struct {
 	WatermarkGain float64
 }
 
-func New(ctx context.Context, errChan chan error, done chan struct{}, tagPath string, opts Options) (*FFMPEG, error) {
+func New(ctx context.Context, tagPath string, opts Options) (*FFMPEG, error) {
 	tagDuration, err := getTagDuration(tagPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tag duration: %w", err)
@@ -93,6 +93,9 @@ func New(ctx context.Context, errChan chan error, done chan struct{}, tagPath st
 		slog.Error("Failed to start FFmpeg", "error", err)
 		return nil, err
 	}
+
+	errChan := make(chan error, 3)
+	done := make(chan struct{})
 
 	f := &FFMPEG{
 		Stdin:   stdin,

@@ -91,5 +91,4 @@ func (u *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-
 }
