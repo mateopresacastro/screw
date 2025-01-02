@@ -189,6 +189,13 @@ func readWebSocketAndPipeToFFMPEG(
 		select {
 		case <-ctx.Done():
 			return
+		case <-logTicker.C:
+			slog.Info("Processing",
+				"name", fileName,
+				"bytes", receivedBytes,
+				"fileSize", fileSize,
+				"progress", math.Round(lastProgress))
+			continue
 		default:
 			messageType, message, err := conn.ReadMessage()
 			if err != nil {
@@ -234,17 +241,7 @@ func readWebSocketAndPipeToFFMPEG(
 				return
 			}
 			lastProgress = progress
-			select {
-			// Log on every tick
-			case <-logTicker.C:
-				slog.Info("Processing",
-					"name", fileName,
-					"bytes", receivedBytes,
-					"fileSize", fileSize,
-					"progress", math.Round(lastProgress))
-			default:
-				continue
-			}
+			continue
 		}
 	}
 }
