@@ -16,7 +16,7 @@ type FFMPEG struct {
 	Stderr  io.ReadCloser
 	Ctx     context.Context
 	ErrChan chan error
-	Done    chan struct{}
+	Done    chan bool
 }
 
 type Options struct {
@@ -95,7 +95,7 @@ func New(ctx context.Context, tagPath string, opts Options) (*FFMPEG, error) {
 	}
 
 	errChan := make(chan error, 3)
-	done := make(chan struct{})
+	done := make(chan bool)
 
 	f := &FFMPEG{
 		Stdin:   stdin,
@@ -151,7 +151,7 @@ func (f *FFMPEG) Read(p []byte) (int, error) {
 	n, err := f.Stdout.Read(p)
 	if err != nil {
 		if err == io.EOF {
-			f.Done <- struct{}{}
+			f.Done <- true
 		}
 		f.ErrChan <- err
 	}

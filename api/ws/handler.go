@@ -159,7 +159,7 @@ func readFFMPEGAndWriteToSocket(
 		default:
 			if err := processOutput(); err != nil {
 				if err == io.EOF {
-					ffmpeg.Done <- struct{}{}
+					ffmpeg.Done <- true
 					return
 				}
 				ffmpeg.ErrChan <- err
@@ -206,7 +206,7 @@ func readWebSocketAndPipeToFFMPEG(
 					websocket.CloseNoStatusReceived,
 				) {
 					slog.Info("WebSocket closed normally by client")
-					ffmpeg.Done <- struct{}{}
+					ffmpeg.Done <- true
 					return
 				}
 				ffmpeg.ErrChan <- fmt.Errorf("websocket read error: %w", err)
