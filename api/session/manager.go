@@ -36,7 +36,7 @@ func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresho
 func (m *Manager) CreateSession(token string, userID int64) (*store.Session, error) {
 	err := m.InvalidateUserSessions(userID)
 	if err != nil {
-		slog.Warn("error deleting old sessions", "err", err)
+		slog.Warn("Error deleting old sessions", "err", err)
 	}
 
 	sessionID := cryptoutil.ID(token)
@@ -151,7 +151,7 @@ func FromContext(ctx context.Context) (*SessionValidationResult, bool) {
 func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
 	result, ok := FromContext(r.Context())
 	if !ok {
-		slog.Error("no session data on context")
+		slog.Error("No session data on context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -169,7 +169,7 @@ func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("error encoding response", "error", err)
+		slog.Error("Error encoding response", "error", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -178,14 +178,14 @@ func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
 func (m *Manager) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	result, ok := FromContext(r.Context())
 	if !ok {
-		slog.Error("no session data on context")
+		slog.Error("No session data on context")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	err := m.InvalidateSession(result.Session.ID)
 	if err != nil {
-		slog.Error("error getting session", "error", err)
+		slog.Error("Error getting session", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}

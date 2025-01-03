@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"sync"
 	"tagg/ffmpeg"
-	"tagg/session"
 	"tagg/store"
 	"time"
 
@@ -51,20 +50,7 @@ func New(store store.Store) *WS {
 	return &WS{store: store}
 }
 
-func (ws *WS) Handler(w http.ResponseWriter, r *http.Request) {
-	data, ok := session.FromContext(r.Context())
-	if !ok {
-		slog.Error("No session data on context")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	tag, err := ws.store.TagByUserID(data.User.ID)
-	if err != nil {
-		slog.Error("Error getting tag")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
+func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) {
 	slog.Info("New websocket connection - trying to upgrade")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -108,11 +94,10 @@ func (ws *WS) Handler(w http.ResponseWriter, r *http.Request) {
 		WatermarkGain: 0.5,
 	}
 
-	ffmpeg, err := ffmpeg.New(ctx, tag.FilePath, opts)
+	ffmpeg, err := ffmpeg.New(ctx, opts)
 	if err != nil {
 		return
 	}
-
 	defer func() {
 		ffmpeg.Close()
 		slog.Info("Websocket connection ended")
@@ -219,7 +204,7 @@ func readWebSocketAndPipeToFFMPEG(
 			}
 
 			if _, err := ffmpeg.Write(message); err != nil {
-				slog.Error("error while writing to ffmpeg stdin", "err", err)
+				slog.Error("Error while writing to ffmpeg stdin", "err", err)
 				ffmpeg.ErrChan <- fmt.Errorf("error while writing to ffmpeg stdin: %w", err)
 				return
 			}

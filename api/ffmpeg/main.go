@@ -6,8 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os/exec"
-	"strconv"
-	"strings"
+	"path/filepath"
 )
 
 type FFMPEG struct {
@@ -26,47 +25,24 @@ type Options struct {
 	WatermarkGain float64
 }
 
-func New(ctx context.Context, tagPath string, opts Options) (*FFMPEG, error) {
-	tagDuration, err := getTagDuration(tagPath)
+func New(ctx context.Context, opts Options) (*FFMPEG, error) {
+	irPath, err := filepath.Abs("audio/ir.wav")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tag duration: %w", err)
+		slog.Error("Failed to read IR", "error", err)
+		return nil, err
 	}
 
-	// Calculate musical timing
-	beatsPerSecond := float64(opts.BPM) / 60
-	beatDuration := 1 / beatsPerSecond
-	barDuration := 4 * beatDuration // Assuming 4/4 time signature
-
-	// Calculate precise timing for the drop
-	dropOffsetSeconds := opts.DropOffset * beatDuration
-
-	// Total cycle duration in seconds
-	totalCycleDuration := float64(opts.BarsInterval) * barDuration
-
-	filterComplex := fmt.Sprintf(
-		"[1:a]volume=%.3f[watermark];"+
-			"[watermark]asetpts=PTS-STARTPTS,"+
-			"adelay=%d|%d[delayed];"+
-			"[delayed]aformat=sample_fmts=fltp:sample_rates=44100,"+
-			"aselect=expr='between(mod(t-%.3f,%f),0,%.3f)'[periodic];"+
-			"[0:a][periodic]amix=inputs=2:duration=first:weights=1 %.3f[out]",
-		opts.WatermarkGain,
-		int(dropOffsetSeconds*1000), int(dropOffsetSeconds*1000), // Delay in milliseconds
-		dropOffsetSeconds, totalCycleDuration, tagDuration,
-		opts.WatermarkGain,
-	)
+	filterComplex := "[0:a][1:a]afir=dry=10:wet=10[reverbed];[reverbed]highpass=f=40,lowpass=f=3000[filtered];[filtered]asetrate=44100*0.83,aresample=44100,atempo=0.93[out]"
 
 	cmd := exec.CommandContext(ctx, "ffmpeg",
 		"-hide_banner",
 		"-loglevel", "error",
-		"-i", "pipe:0",
-		"-stream_loop", "-1",
-		"-i", tagPath,
+		"-i", "pipe:0", // Main audio
+		"-i", irPath, // IR file
 		"-filter_complex", filterComplex,
 		"-map", "[out]",
 		"-c:a", "aac",
-		"-b:a", "192k",
-		"-ar", "44100",
+		"-b:a", "256k",
 		"-f", "adts",
 		"pipe:1",
 	)
@@ -136,7 +112,7 @@ func (f *FFMPEG) Close() {
 	f.Stdin.Close()
 	f.Stdout.Close()
 	f.Stderr.Close()
-	slog.Info("ffmpeg clean up done! All good!")
+	slog.Info("Ffmpeg clean up done.")
 }
 
 func (f *FFMPEG) Write(p []byte) (int, error) {
@@ -156,20 +132,4 @@ func (f *FFMPEG) Read(p []byte) (int, error) {
 		f.ErrChan <- err
 	}
 	return n, err
-}
-
-func getTagDuration(filepath string) (float64, error) {
-	cmd := exec.Command("ffprobe",
-		"-v", "error",
-		"-show_entries", "format=duration",
-		"-of", "default=noprint_wrappers=1:nokey=1",
-		filepath,
-	)
-
-	output, err := cmd.Output()
-	if err != nil {
-		return 0, err
-	}
-
-	return strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
 }

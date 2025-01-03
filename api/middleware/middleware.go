@@ -27,7 +27,7 @@ func Logger() Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			next.ServeHTTP(w, r)
-			slog.Info("request completed",
+			slog.Info("Request completed",
 				"method", r.Method,
 				"path", r.URL.Path,
 				"ip", r.RemoteAddr,
@@ -37,7 +37,7 @@ func Logger() Middleware {
 	}
 }
 
-func CORS(allowedOrigins map[string]struct{}) Middleware {
+func CORS(allowedOrigins map[string]bool) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
@@ -59,7 +59,7 @@ func CORS(allowedOrigins map[string]struct{}) Middleware {
 	}
 }
 
-func Protect(protectedRoutes map[string]struct{}, sm *session.Manager) Middleware {
+func Protect(protectedRoutes map[string]bool, sm *session.Manager) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if _, protected := protectedRoutes[r.URL.Path]; !protected {
@@ -69,12 +69,12 @@ func Protect(protectedRoutes map[string]struct{}, sm *session.Manager) Middlewar
 
 			result, err := sm.GetCurrentSession(r)
 			if err != nil {
-				slog.Error("error getting session", "error", err)
+				slog.Error("Error getting session", "error", err)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 			if result == nil || result.User == nil {
-				slog.Error("no active session")
+				slog.Error("No active session")
 				http.Error(w, "No active session", http.StatusUnauthorized)
 				return
 			}
@@ -97,11 +97,11 @@ func RateLimit(rps float64, burst int) Middleware {
 	go func() {
 		for range cleanup.C {
 			now := time.Now()
-			slog.Info("cheking reate limiter stored ips")
+			slog.Info("Cheking rate limiter stored ips")
 			limiters.Range(func(key, value any) bool {
 				entry := value.(*limiterEntry)
 				if now.Sub(entry.lastSeen) > time.Hour {
-					slog.Info("found 1 hour old IP on rate limiter - deleting")
+					slog.Info("Found 1 hour old IP on rate limiter - deleting")
 					limiters.Delete(key)
 				}
 				return true
@@ -135,12 +135,12 @@ func RateLimit(rps float64, burst int) Middleware {
 			}
 
 			if !entry.limiter.Allow() {
-				slog.Error("too many requests", "ip", ip)
+				slog.Error("Too many requests", "ip", ip)
 				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 				return
 			}
 
-			slog.Info("rate limiter state",
+			slog.Info("Rate limiter state",
 				"ip", ip,
 				"tokens", entry.limiter.Tokens(),
 				"limit", entry.limiter.Limit(),

@@ -95,7 +95,7 @@ func (s *sqliteStore) initializeTables() error {
 }
 
 func (s *sqliteStore) CreateUser(user *User) (int64, error) {
-	slog.Info("db: creating user", "user", user)
+	slog.Info("DB: creating user", "user", user)
 	query := `
         INSERT INTO user (google_id, email, name, picture)
         VALUES (?, ?, ?, ?)
@@ -110,7 +110,7 @@ func (s *sqliteStore) CreateUser(user *User) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error getting last insert id: %w", err)
 	}
-	slog.Info("db: user created")
+	slog.Info("DB: user created")
 	return userID, nil
 }
 
@@ -131,7 +131,7 @@ func (s *sqliteStore) UserByGoogleID(googleID string) (*User, error) {
 		return nil, fmt.Errorf("error getting user: %w", err)
 	}
 
-	slog.Info("db: got user by google id ", "user", user)
+	slog.Info("DB: got user by google id ", "user", user)
 	return user, nil
 }
 
@@ -150,7 +150,7 @@ func (s *sqliteStore) DeleteUser(userID int64) error {
 		return fmt.Errorf("user not found")
 	}
 
-	slog.Info("db: deleted user")
+	slog.Info("DB: deleted user")
 	return nil
 }
 
@@ -185,7 +185,7 @@ func (s *sqliteStore) CreateSession(sessionID string, userID int64, expiresAt in
 		UserID:    userID,
 		ExpiresAt: expiresAt,
 	}
-	slog.Info("db: session created")
+	slog.Info("DB: session created")
 	return session, nil
 }
 
@@ -195,7 +195,7 @@ func (s *sqliteStore) DeleteSessionByUserID(userID int64) error {
 		return fmt.Errorf("error deleting session by userID: %w", err)
 	}
 
-	slog.Info("db: all old session deleted for user")
+	slog.Info("DB: all old session deleted for user")
 	return nil
 }
 
@@ -204,7 +204,7 @@ func (s *sqliteStore) DeleteSessionBySessionID(sessionID string) error {
 	if err != nil {
 		return fmt.Errorf("error deleting session by sessionID: %w", err)
 	}
-	slog.Info("db: session deleted")
+	slog.Info("DB: session deleted")
 	return nil
 }
 
@@ -236,7 +236,7 @@ func (s *sqliteStore) SessionAndUserBySessionID(sessionID string) (*Session, *Us
 		return nil, nil, fmt.Errorf("error getting session and user: %w", err)
 	}
 
-	slog.Info("db: got session")
+	slog.Info("DB: got session")
 	return session, user, nil
 }
 
@@ -246,7 +246,7 @@ func (s *sqliteStore) RefreshSession(sessionID string, newExpiresAt int64) error
 	if err != nil {
 		return fmt.Errorf("error updating session: %w", err)
 	}
-	slog.Info("db: session rereshed")
+	slog.Info("DB: session rereshed")
 	return nil
 }
 
@@ -260,7 +260,7 @@ func (s *sqliteStore) DeleteTag(tagID string) error {
 }
 
 func (s *sqliteStore) CreateTag(tag *Tag) error {
-	slog.Info("db: creating tag", "tag", tag)
+	slog.Info("DB: creating tag", "tag", tag)
 	query := `
         INSERT INTO tag (id, user_id, file_path)
         VALUES (?, ?, ?)
@@ -275,7 +275,7 @@ func (s *sqliteStore) CreateTag(tag *Tag) error {
 	if err != nil {
 		return fmt.Errorf("error getting last insert id: %w", err)
 	}
-	slog.Info("db: tag created")
+	slog.Info("DB: tag created")
 	return nil
 }
 
@@ -294,6 +294,6 @@ func (s *sqliteStore) TagByUserID(userID int64) (*Tag, error) {
 		return nil, fmt.Errorf("error getting tag: %w", err)
 	}
 
-	slog.Info("db: got tag by userID", "tag", tag)
+	slog.Info("DB: got tag by userID", "tag", tag)
 	return tag, nil
 }

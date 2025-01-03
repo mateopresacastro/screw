@@ -206,7 +206,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errors.Is(err, store.ErrUserNotFound) == false {
-		slog.Error("error reading user from db", "error", err)
+		slog.Error("Error reading user from db", "error", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
