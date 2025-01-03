@@ -5,11 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 	"tagg/cryptoutil"
+	"tagg/he"
 	"tagg/session"
 	"tagg/store"
 	"time"
@@ -52,18 +52,23 @@ func NewGoogle(clientID, clientSecret, callbackURL string, store store.Store, se
 	}
 }
 
-func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) {
+func internalError(err error, desc string) *he.AppError {
+	return &he.AppError{
+		HTTPMessage: "Internal server error",
+		Desc:        desc,
+		Code:        http.StatusInternalServerError,
+		Error:       err,
+	}
+}
+func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) *he.AppError {
 	authorizationURL, err := url.Parse(googleAuthorizeUrl)
 	if err != nil {
-		slog.Error("Failed to parse Google authorization URL", "error", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to parse Google authorization URL")
 	}
+
 	state, err := createState()
 	if err != nil {
-		slog.Error("Failed to create OAuth state", "error", err)
-		http.Error(w, "error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to create OAuth state")
 	}
 
 	query := authorizationURL.Query()
@@ -71,7 +76,6 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	query.Set("client_id", g.clientID)
 	query.Set("redirect_uri", g.callbackURL)
 	query.Set("response_type", "code")
-
 	query.Set("scope", strings.Join(scopes, " "))
 
 	authorizationURL.RawQuery = query.Encode()
@@ -81,25 +85,21 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Value:    state,
 		MaxAge:   int(10 * time.Minute),
 		HttpOnly: true,
-		Secure:   false, // change when https
+		Secure:   false, // TODO: change when https
 		SameSite: http.SameSiteLaxMode,
 	})
 
 	http.Redirect(w, r, authorizationURL.String(), http.StatusFound)
+	return nil
 }
 
-func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
+func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *he.AppError {
 	query := r.URL.Query()
 	code := query.Get("code")
 	state := query.Get("state")
 	storedState, err := r.Cookie(googleOAuthStateCookieName)
 	if err != nil || storedState.Value != state || code == "" {
-		slog.Error("Invalid OAuth state or missing code",
-			"error", err,
-			"state_match", storedState != nil && storedState.Value == state,
-			"has_code", code != "")
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
+		return he.BadRequestError(err, "Invalid OAuth state or missing code")
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -118,9 +118,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 
 	req, err := http.NewRequest("POST", googleTokenUrl, strings.NewReader(formData.Encode()))
 	if err != nil {
-		slog.Error("Failed to create token request", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to create token request")
 	}
 
 	basicAuth := base64.StdEncoding.EncodeToString([]byte(g.clientID + ":" + g.clientSecret))
@@ -131,38 +129,28 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 
 	tokenResp, err := client.Do(req)
 	if err != nil {
-		slog.Error("Failed to execute token request", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to execute token request")
 	}
 	defer tokenResp.Body.Close()
 
 	if tokenResp.StatusCode != http.StatusOK {
-		slog.Error("Token endpoint returned non-200 status", "status", tokenResp.StatusCode)
-		http.Error(w, "Failed to exchange code", http.StatusInternalServerError)
-		return
+		return he.InternalError(errors.New("non-200 status code"), "Token endpoint returned non-200 status")
 	}
 
 	var tokenRespData tokenResponse
 	if err := json.NewDecoder(tokenResp.Body).Decode(&tokenRespData); err != nil {
-		slog.Error("Failed to decode token response", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to decode token response")
 	}
 
 	userReq, err := http.NewRequest("GET", googleUserInfoURL, nil)
 	if err != nil {
-		slog.Error("Failed to create user info request", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to create user info request")
 	}
 
 	userReq.Header.Set("Authorization", "Bearer "+tokenRespData.AccessToken)
 	userResp, err := client.Do(userReq)
 	if err != nil {
-		slog.Error("Failed to execute user info request", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to execute user info request")
 	}
 	defer userResp.Body.Close()
 
@@ -175,40 +163,30 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(userResp.Body).Decode(&userData); err != nil {
-		slog.Error("Failed to decode user info response", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to decode user info response")
 	}
 
-	if userData.VerifiedEmail == false {
-		slog.Error("User email not verified", "email", userData.Email)
-		http.Error(w, "Email not verified", http.StatusBadRequest)
-		return
+	if !userData.VerifiedEmail {
+		return he.BadRequestError(errors.New("email not verified"), "User email not verified")
 	}
 
 	existingUser, err := g.store.UserByGoogleID(userData.ID)
 	if err == nil && existingUser != nil {
 		newSessionToken, err := cryptoutil.Random()
 		if err != nil {
-			slog.Error("Failed to generate session token for existing user", "error", err, "user_id", existingUser.ID)
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			return
+			return he.InternalError(err, "Failed to generate session token for existing user")
 		}
 		session, err := g.sessionMgr.CreateSession(newSessionToken, existingUser.ID)
 		if err != nil {
-			slog.Error("Failed to create session for existing user", "error", err, "user_id", existingUser.ID)
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			return
+			return he.InternalError(err, "Failed to create session for existing user")
 		}
 		g.sessionMgr.SetSessionCookie(w, newSessionToken, session.ExpiresAt)
 		http.Redirect(w, r, "http://localhost:3001", http.StatusFound)
-		return
+		return nil
 	}
 
-	if errors.Is(err, store.ErrUserNotFound) == false {
-		slog.Error("Error reading user from db", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+	if !errors.Is(err, store.ErrUserNotFound) {
+		return he.InternalError(err, "Error reading user from db")
 	}
 
 	user := &store.User{
@@ -220,27 +198,22 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) {
 
 	newUserID, err := g.store.CreateUser(user)
 	if err != nil {
-		slog.Error("Failed to create new user", "error", err, "email", userData.Email)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to create new user")
 	}
 
 	newSessionToken, err := cryptoutil.Random()
 	if err != nil {
-		slog.Error("Failed to generate session token for new user", "error", err, "user_id", newUserID)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to generate session token for new user")
 	}
 
 	session, err := g.sessionMgr.CreateSession(newSessionToken, newUserID)
 	if err != nil {
-		slog.Error("Failed to create session for new user", "error", err, "user_id", newUserID)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Failed to create session for new user")
 	}
+
 	g.sessionMgr.SetSessionCookie(w, newSessionToken, session.ExpiresAt)
 	http.Redirect(w, r, "http://localhost:3001", http.StatusPermanentRedirect)
-	return
+	return nil
 }
 
 func createState() (string, error) {

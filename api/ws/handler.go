@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"sync"
 	"tagg/ffmpeg"
+	"tagg/he"
 	"tagg/store"
 	"time"
 
@@ -50,37 +52,32 @@ func New(store store.Store) *WS {
 	return &WS{store: store}
 }
 
-func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) {
+func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *he.AppError {
 	slog.Info("New websocket connection - trying to upgrade")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		slog.Error("Failed to upgrade connection", "error", err)
-		return
+		return he.InternalError(err, "Failed to upgrade websocket connection")
 	}
 	defer conn.Close()
 	slog.Info("Upgraded")
 
 	err = conn.NetConn().SetDeadline(time.Now().Add(2 * time.Minute))
 	if err != nil {
-		slog.Error("Error setting connection deadline", "error", err)
-		return
+		return he.InternalError(err, "Error setting connection deadline")
 	}
 
 	messageType, message, err := conn.ReadMessage()
 	if err != nil {
-		slog.Error("Error reading initial message", "error", err)
-		return
+		return he.InternalError(err, "Error reading initial message")
 	}
 
 	var meta Metadata
 	if messageType != websocket.TextMessage {
-		slog.Error("First message must be metadata")
-		return
+		return he.BadRequestError(errors.New("invalid message type"), "First message must be metadata")
 	}
 
 	if err := json.Unmarshal(message, &meta); err != nil {
-		slog.Error("Error parsing metadata", "error", err)
-		return
+		return he.BadRequestError(err, "Error parsing metadata")
 	}
 
 	ctx, cancel := context.WithCancel(r.Context())
@@ -96,7 +93,8 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) {
 
 	ffmpeg, err := ffmpeg.New(ctx, opts)
 	if err != nil {
-		return
+		return he.InternalError(err, "Failed to initialize ffmpeg")
+
 	}
 	defer func() {
 		ffmpeg.Close()
@@ -109,14 +107,13 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Listening to websocket. Waiting for processing completion or errors.")
 	select {
 	case err := <-ffmpeg.ErrChan:
-		slog.Error("Stream processing error", "error", err)
-		return
+		return he.InternalError(err, "Stream processing error")
 	case <-ffmpeg.Done:
 		slog.Info("Processing finished gracefully")
-		return
+		return nil
 	case <-ctx.Done():
 		slog.Info("The context was cancelled")
-		return
+		return nil
 	}
 }
 

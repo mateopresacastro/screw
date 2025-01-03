@@ -3,10 +3,12 @@ package session
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"tagg/cryptoutil"
+	"tagg/he"
 	"tagg/store"
 	"time"
 )
@@ -148,12 +150,10 @@ func FromContext(ctx context.Context) (*SessionValidationResult, bool) {
 	return session, ok
 }
 
-func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
+func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) *he.AppError {
 	result, ok := FromContext(r.Context())
 	if !ok {
-		slog.Error("No session data on context")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+		return he.UnauthorizedError(errors.New("no session"), "No session data on context")
 	}
 
 	response := struct {
@@ -169,26 +169,22 @@ func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.Error("Error encoding response", "error", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Error encoding response")
 	}
+	return nil
 }
 
-func (m *Manager) HandleLogout(w http.ResponseWriter, r *http.Request) {
+func (m *Manager) HandleLogout(w http.ResponseWriter, r *http.Request) *he.AppError {
 	result, ok := FromContext(r.Context())
 	if !ok {
-		slog.Error("No session data on context")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+		return he.UnauthorizedError(errors.New("no session"), "No session data on context")
 	}
 
 	err := m.InvalidateSession(result.Session.ID)
 	if err != nil {
-		slog.Error("Error getting session", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return he.InternalError(err, "Error invalidating session")
 	}
+
 	m.DeleteSessionCookie(w)
-	return
+	return nil
 }
