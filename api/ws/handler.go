@@ -3,7 +3,6 @@ package ws
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,7 +10,7 @@ import (
 	"net/http"
 	"sync"
 	"tagg/ffmpeg"
-	"tagg/he"
+	"tagg/herr"
 	"tagg/store"
 	"time"
 
@@ -52,32 +51,36 @@ func New(store store.Store) *WS {
 	return &WS{store: store}
 }
 
-func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *he.AppError {
+func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *herr.Error {
 	slog.Info("New websocket connection - trying to upgrade")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return he.InternalError(err, "Failed to upgrade websocket connection")
+		return herr.Internal(err, "Failed to upgrade websocket connection")
 	}
 	defer conn.Close()
 	slog.Info("Upgraded")
 
 	err = conn.NetConn().SetDeadline(time.Now().Add(2 * time.Minute))
 	if err != nil {
-		return he.InternalError(err, "Error setting connection deadline")
+		herr.WS(conn, err, "Connection deadline error")
+		return nil
 	}
 
 	messageType, message, err := conn.ReadMessage()
 	if err != nil {
-		return he.InternalError(err, "Error reading initial message")
+		herr.WS(conn, err, "Error reading first message")
+		return nil
 	}
 
 	var meta Metadata
 	if messageType != websocket.TextMessage {
-		return he.BadRequestError(errors.New("invalid message type"), "First message must be metadata")
+		herr.WS(conn, err, "First message must be metadata")
+		return nil
 	}
 
 	if err := json.Unmarshal(message, &meta); err != nil {
-		return he.BadRequestError(err, "Error parsing metadata")
+		herr.WS(conn, err, "Error initializing ffmpeg")
+		return nil
 	}
 
 	ctx, cancel := context.WithCancel(r.Context())
@@ -93,9 +96,10 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *he.AppError {
 
 	ffmpeg, err := ffmpeg.New(ctx, opts)
 	if err != nil {
-		return he.InternalError(err, "Failed to initialize ffmpeg")
-
+		herr.WS(conn, err, "Error initializing ffmpeg")
+		return nil
 	}
+
 	defer func() {
 		ffmpeg.Close()
 		slog.Info("Websocket connection ended")
@@ -107,9 +111,10 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *he.AppError {
 	slog.Info("Listening to websocket. Waiting for processing completion or errors.")
 	select {
 	case err := <-ffmpeg.ErrChan:
-		return he.InternalError(err, "Stream processing error")
+		herr.WS(conn, err, "Stream processing error")
+		return nil
 	case <-ffmpeg.Done:
-		slog.Info("Processing finished gracefully")
+		herr.WSClose(conn, "Processing complete")
 		return nil
 	case <-ctx.Done():
 		slog.Info("The context was cancelled")

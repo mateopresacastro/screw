@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"tagg/auth"
-	"tagg/he"
+	"tagg/herr"
 	mw "tagg/middleware"
 	"tagg/session"
 	"tagg/store"
@@ -41,11 +41,11 @@ func startServer(env string) error {
 	ws := ws.New(store)
 
 	mux.Handle("/", http.FileServer(http.Dir(dir)))
-	mux.Handle("/ws", he.AppHandler(ws.Handle))
-	mux.Handle("GET /login/google", he.AppHandler(google.HandleLogin))
-	mux.Handle("GET /login/google/callback", he.AppHandler(google.HandleCallBack))
-	mux.Handle("GET /login/session", he.AppHandler(sessionManager.HandleCurrentSession))
-	mux.Handle("POST /logout", he.AppHandler(sessionManager.HandleLogout))
+	mux.Handle("/ws", herr.Wrap(ws.Handle))
+	mux.Handle("GET /login/google", herr.Wrap(google.HandleLogin))
+	mux.Handle("GET /login/google/callback", herr.Wrap(google.HandleCallBack))
+	mux.Handle("GET /login/session", herr.Wrap(sessionManager.HandleCurrentSession))
+	mux.Handle("POST /logout", herr.Wrap(sessionManager.HandleLogout))
 
 	CORSAllowed := map[string]bool{
 		"http://localhost:3001": true,

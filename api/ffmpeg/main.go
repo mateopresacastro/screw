@@ -32,7 +32,7 @@ func New(ctx context.Context, opts Options) (*FFMPEG, error) {
 		return nil, err
 	}
 
-	filterComplex := "[0:a][1:a]afir=dry=10:wet=10[reverbed];[reverbed]highpass=f=40,lowpass=f=3000[filtered];[filtered]asetrate=44100*0.83,aresample=44100,atempo=0.93[out]"
+	filterComplex := "[0:a][1:a]afir=dry=10:wet=10[reverbed];[reverbed]highpass=f=40,lowpass=f=2300[filtered];[filtered]asetrate=44100*0.9,aresample=44100,atempo=0.97[out]"
 
 	cmd := exec.CommandContext(ctx, "ffmpeg",
 		"-hide_banner",
