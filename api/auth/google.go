@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -15,24 +16,17 @@ import (
 	"time"
 )
 
-const (
-	googleAuthorizeUrl         = "https://accounts.google.com/o/oauth2/v2/auth"
-	googleTokenUrl             = "https://oauth2.googleapis.com/token"
-	googleUserInfoURL          = "https://www.googleapis.com/oauth2/v2/userinfo"
-	googleOAuthStateCookieName = "google_oauth_state"
-)
-
-var scopes = []string{
-	"https://www.googleapis.com/auth/userinfo.profile",
-	"https://www.googleapis.com/auth/userinfo.email",
-}
-
 type google struct {
-	clientID     string
-	clientSecret string
-	callbackURL  string
-	store        store.Store
-	sessionMgr   *session.Manager
+	clientID               string
+	clientSecret           string
+	callbackURL            string
+	store                  store.Store
+	sessionMgr             *session.Manager
+	authUrl                string
+	tokenUrl               string
+	userInfoUrl            string
+	stateCookieName        string
+	codeVerifierCookieName string
 }
 
 type tokenResponse struct {
@@ -44,16 +38,21 @@ type tokenResponse struct {
 
 func NewGoogle(clientID, clientSecret, callbackURL string, store store.Store, sessionMgr *session.Manager) *google {
 	return &google{
-		clientID:     clientID,
-		clientSecret: clientSecret,
-		callbackURL:  callbackURL,
-		store:        store,
-		sessionMgr:   sessionMgr,
+		clientID:               clientID,
+		clientSecret:           clientSecret,
+		callbackURL:            callbackURL,
+		store:                  store,
+		sessionMgr:             sessionMgr,
+		authUrl:                "https://accounts.google.com/o/oauth2/v2/auth",
+		tokenUrl:               "https://oauth2.googleapis.com/token",
+		userInfoUrl:            "https://www.googleapis.com/oauth2/v2/userinfo",
+		stateCookieName:        "google_oauth_state",
+		codeVerifierCookieName: "google_code_verifier",
 	}
 }
 
 func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) *herr.Error {
-	authorizationURL, err := url.Parse(googleAuthorizeUrl)
+	authorizationURL, err := url.Parse(g.authUrl)
 	if err != nil {
 		return herr.Internal(err, "Failed to parse Google authorization URL")
 	}
@@ -63,18 +62,36 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) *herr.Error
 		return herr.Internal(err, "Failed to create OAuth state")
 	}
 
+	codeVerifier, err := createCodeVerifier()
+	if err != nil {
+		return herr.Internal(err, "Failed to create code verifier")
+	}
+
+	codeChallenge := createS256CodeChallenge(codeVerifier)
+
 	query := authorizationURL.Query()
-	query.Set("state", state)
+	query.Set("response_type", "code")
 	query.Set("client_id", g.clientID)
 	query.Set("redirect_uri", g.callbackURL)
-	query.Set("response_type", "code")
-	query.Set("scope", strings.Join(scopes, " "))
+	query.Set("state", state)
+	query.Set("code_challenge_method", "S256")
+	query.Set("code_challenge", codeChallenge)
+	query.Set("scope", "openid profile email")
 
 	authorizationURL.RawQuery = query.Encode()
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     googleOAuthStateCookieName,
+		Name:     g.stateCookieName,
 		Value:    state,
+		MaxAge:   int(10 * time.Minute),
+		HttpOnly: true,
+		Secure:   false, // TODO: change when https
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     g.codeVerifierCookieName,
+		Value:    codeVerifier,
 		MaxAge:   int(10 * time.Minute),
 		HttpOnly: true,
 		Secure:   false, // TODO: change when https
@@ -89,13 +106,26 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 	query := r.URL.Query()
 	code := query.Get("code")
 	state := query.Get("state")
-	storedState, err := r.Cookie(googleOAuthStateCookieName)
-	if err != nil || storedState.Value != state || code == "" {
-		return herr.BadRequest(err, "Invalid OAuth state or missing code")
+	stateInCookie, err := r.Cookie(g.stateCookieName)
+	if err != nil {
+		return herr.BadRequest(err, "Error getting state cookie")
+	}
+
+	codeVerifierInCookie, err := r.Cookie(g.codeVerifierCookieName)
+	if err != nil {
+		return herr.BadRequest(err, "Error getting code verifier cookie")
+	}
+
+	if code == "" || state == "" || stateInCookie.Value == "" || codeVerifierInCookie.Value == "" {
+		return herr.BadRequest(err, "Missing data")
+	}
+
+	if state != stateInCookie.Value {
+		return herr.BadRequest(err, "States differ")
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     googleOAuthStateCookieName,
+		Name:     g.stateCookieName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
@@ -106,9 +136,10 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 		"grant_type":   {"authorization_code"},
 		"code":         {code},
 		"redirect_uri": {g.callbackURL},
+		"code_verifier": {codeVerifierInCookie.Value},
 	}
 
-	req, err := http.NewRequest("POST", googleTokenUrl, strings.NewReader(formData.Encode()))
+	req, err := http.NewRequest("POST", g.tokenUrl, strings.NewReader(formData.Encode()))
 	if err != nil {
 		return herr.Internal(err, "Failed to create token request")
 	}
@@ -134,7 +165,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 		return herr.Internal(err, "Failed to decode token response")
 	}
 
-	userReq, err := http.NewRequest("GET", googleUserInfoURL, nil)
+	userReq, err := http.NewRequest("GET", g.userInfoUrl, nil)
 	if err != nil {
 		return herr.Internal(err, "Failed to create user info request")
 	}
@@ -210,9 +241,21 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 
 func createState() (string, error) {
 	bytes := make([]byte, 16)
-	_, err := rand.Read(bytes)
-	if err != nil {
+	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(bytes), nil
+}
+
+func createCodeVerifier() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(bytes), nil
+}
+
+func createS256CodeChallenge(codeVerifier string) string {
+	hash := sha256.Sum256([]byte(codeVerifier))
+	return base64.RawURLEncoding.EncodeToString(hash[:])
 }
