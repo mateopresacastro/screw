@@ -109,7 +109,7 @@ export default function useWebSocket(file: File) {
       socket.removeEventListener("close", handleDisconnect);
       socket.removeEventListener("error", handleError);
     };
-  }, []);
+  }, [file]);
 
   return {
     isStreaming,

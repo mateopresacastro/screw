@@ -2,7 +2,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { sand, sandDark } from "@radix-ui/colors";
 import WaveSurfer from "wavesurfer.js";
-import { IoPlaySharp, IoStopSharp, IoDownload } from "react-icons/io5";
+import { IoPlaySharp, IoStopSharp } from "react-icons/io5";
 import { ArrowDownToLine } from "lucide-react";
 
 export default function WaveForm({
@@ -36,7 +36,7 @@ export default function WaveForm({
     wsRef.current = ws;
     ws.loadBlob(blob);
     return () => ws.destroy();
-  }, [blob]);
+  }, [blob, colorPallete.sand7, colorPallete.sand11, colorPallete.sand8]);
 
   function handlePlayPause() {
     if (!wsRef.current) return;
