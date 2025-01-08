@@ -80,17 +80,6 @@ func (s *sqliteStore) initializeTables() error {
 		return fmt.Errorf("error creating session table: %w", err)
 	}
 
-	_, err = s.db.Exec(`
-		CREATE TABlE IF NOT EXISTS tag (
-			id TEXT NOT NULL PRIMARY KEY,
-		    user_id INTEGER NOT NULL REFERENCES user(id),
-			file_path TEXT NOT NULL UNIQUE
-		)
-	`)
-	if err != nil {
-		return fmt.Errorf("error creating tag table: %w", err)
-	}
-
 	return nil
 }
 
@@ -167,7 +156,7 @@ func (s *sqliteStore) CreateSession(sessionID string, userID int64, expiresAt in
 		return nil, fmt.Errorf("error checking user existence: %w", err)
 	}
 	if !exists {
-		return nil, fmt.Errorf("user not found")
+		return nil, ErrUserNotFound
 	}
 
 	query := "INSERT INTO session (id, user_id, expires_at) VALUES (?, ?, ?)"
@@ -246,7 +235,7 @@ func (s *sqliteStore) RefreshSession(sessionID string, newExpiresAt int64) error
 	if err != nil {
 		return fmt.Errorf("error updating session: %w", err)
 	}
-	slog.Info("DB: session rereshed")
+	slog.Info("DB: session refreshed")
 	return nil
 }
 
@@ -257,43 +246,4 @@ func (s *sqliteStore) DeleteTag(tagID string) error {
 	}
 	slog.Info("DB: Tag deleted")
 	return nil
-}
-
-func (s *sqliteStore) CreateTag(tag *Tag) error {
-	slog.Info("DB: creating tag", "tag", tag)
-	query := `
-        INSERT INTO tag (id, user_id, file_path)
-        VALUES (?, ?, ?)
-    `
-	var result sql.Result
-	result, err := s.db.Exec(query, tag.ID, tag.UserID, tag.FilePath)
-	if err != nil {
-		return fmt.Errorf("error creating tag: %w", err)
-	}
-
-	_, err = result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("error getting last insert id: %w", err)
-	}
-	slog.Info("DB: tag created")
-	return nil
-}
-
-func (s *sqliteStore) TagByUserID(userID int64) (*Tag, error) {
-	tag := &Tag{}
-	err := s.db.QueryRow(`
-			SELECT id, file_path, user_id
-			FROM tag
-			WHERE user_id = ?
-		`, userID).Scan(&tag.ID, &tag.FilePath, &tag.UserID)
-
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("tag not found: %w", err)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error getting tag: %w", err)
-	}
-
-	slog.Info("DB: got tag by userID", "tag", tag)
-	return tag, nil
 }

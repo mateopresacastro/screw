@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { analyze } from "web-audio-beat-detector";
 
 interface ProgressMessage {
   type: string;
@@ -29,14 +28,10 @@ export default function useWebSocket(file: File) {
     socket.addEventListener("error", handleError);
 
     async function handleOpen() {
-      const detectedBpm = await detectBPM(file);
-      console.log({ detectedBpm });
-
       const message = {
         fileSize: file.size,
         fileName: file.name,
         mimeType: file.type,
-        bpm: detectedBpm,
       };
       console.log({ message });
 
@@ -136,27 +131,4 @@ export default function useWebSocket(file: File) {
     isError,
     isCreatingUrl,
   };
-}
-
-function detectBPM(file: File) {
-  return new Promise((resolve, reject) => {
-    const audioContext = new AudioContext();
-    const fileReader = new FileReader();
-
-    fileReader.onload = async (e) => {
-      try {
-        const audioData = e.target?.result as ArrayBuffer;
-        const audioBuffer = await audioContext.decodeAudioData(audioData);
-        const tempo = await analyze(audioBuffer);
-        resolve(Math.round(tempo));
-      } catch (error) {
-        reject(error);
-      } finally {
-        audioContext.close();
-      }
-    };
-
-    fileReader.onerror = reject;
-    fileReader.readAsArrayBuffer(file);
-  });
 }

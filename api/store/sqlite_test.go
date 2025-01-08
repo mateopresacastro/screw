@@ -9,7 +9,6 @@ import (
 
 func setupTestDB(t *testing.T) Store {
 	tmpfile := "./test.db"
-	os.Remove(tmpfile)
 
 	store, err := newSQLiteStore(tmpfile)
 	if err != nil {

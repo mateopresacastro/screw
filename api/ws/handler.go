@@ -26,10 +26,9 @@ var upgrader = websocket.Upgrader{
 }
 
 type Metadata struct {
-	FileSize int64   `json:"fileSize"`
-	FileName string  `json:"fileName"`
-	MimeType string  `json:"mimeType"`
-	BPM      float32 `json:"bpm"`
+	FileSize int64  `json:"fileSize"`
+	FileName string `json:"fileName"`
+	MimeType string `json:"mimeType"`
 }
 
 type progressMessage struct {
@@ -60,7 +59,7 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *herr.Error {
 	defer conn.Close()
 	slog.Info("Upgraded")
 
-	err = conn.NetConn().SetDeadline(time.Now().Add(2 * time.Minute))
+	err = conn.NetConn().SetDeadline(time.Now().Add(5 * time.Minute))
 	if err != nil {
 		herr.WS(conn, err, "Connection deadline error")
 		return nil
@@ -72,12 +71,12 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *herr.Error {
 		return nil
 	}
 
-	var meta Metadata
 	if messageType != websocket.TextMessage {
 		herr.WS(conn, err, "First message must be metadata")
 		return nil
 	}
 
+	var meta Metadata
 	if err := json.Unmarshal(message, &meta); err != nil {
 		herr.WS(conn, err, "Error initializing ffmpeg")
 		return nil
@@ -87,14 +86,8 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *herr.Error {
 	defer cancel()
 
 	var writeMu sync.Mutex
-	opts := ffmpeg.Options{
-		BPM:           meta.BPM,
-		BarsInterval:  2,
-		DropOffset:    7,
-		WatermarkGain: 0.5,
-	}
 
-	ffmpeg, err := ffmpeg.New(ctx, opts)
+	ffmpeg, err := ffmpeg.New(ctx)
 	if err != nil {
 		herr.WS(conn, err, "Error initializing ffmpeg")
 		return nil

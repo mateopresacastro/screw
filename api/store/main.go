@@ -9,9 +9,6 @@ type Store interface {
 	DeleteSessionBySessionID(sessionID string) (err error)
 	SessionAndUserBySessionID(sessionID string) (*Session, *User, error)
 	RefreshSession(sessionID string, newExpiresAt int64) error
-	CreateTag(tag *Tag) error
-	DeleteTag(tagID string) error
-	TagByUserID(userID int64) (*Tag, error)
 }
 
 func NewFromEnv(env string) (Store, error) {

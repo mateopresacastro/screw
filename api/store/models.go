@@ -13,9 +13,3 @@ type Session struct {
 	UserID    int64  `json:"user_id"`
 	ExpiresAt int64  `json:"expires_at"`
 }
-
-type Tag struct {
-	ID       string `json:"id"`
-	UserID   int64  `json:"user_id"`
-	FilePath string `json:"file_path"`
-}

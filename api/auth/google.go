@@ -127,15 +127,23 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 	http.SetCookie(w, &http.Cookie{
 		Name:     g.stateCookieName,
 		Value:    "",
-		Path:     "/",
+		Path:     "/login",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     g.codeVerifierCookieName,
+		Value:    "",
+		Path:     "/login",
 		MaxAge:   -1,
 		HttpOnly: true,
 	})
 
 	formData := url.Values{
-		"grant_type":   {"authorization_code"},
-		"code":         {code},
-		"redirect_uri": {g.callbackURL},
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"redirect_uri":  {g.callbackURL},
 		"code_verifier": {codeVerifierInCookie.Value},
 	}
 

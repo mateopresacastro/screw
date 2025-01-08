@@ -1,6 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-
 import { z } from "zod";
 
 const SessionSchema = z.object({
@@ -11,16 +10,19 @@ const SessionSchema = z.object({
 
 export default function useAuth() {
   const router = useRouter();
-  const query = useQuery({
+  const queryClient = useQueryClient();
+
+  const user = useQuery({
     queryKey: ["session"],
     queryFn: async () => {
       const res = await fetch("http://localhost:3000/login/session", {
         credentials: "include",
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Unauthorized");
       const json = await res.json();
       return SessionSchema.parse(json);
     },
+    retry: false,
   });
 
   const { mutate: logout } = useMutation({
@@ -30,11 +32,11 @@ export default function useAuth() {
         credentials: "include",
         method: "POST",
       });
-
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Logout failed");
+      queryClient.removeQueries({ queryKey: ["session"] });
       router.push("/login");
     },
   });
 
-  return { query, logout };
+  return { user, logout };
 }

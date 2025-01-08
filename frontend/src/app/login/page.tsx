@@ -6,11 +6,11 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-4 flex flex-col">
           <div className="text-center">
-            <h2>welcome</h2>
+            <h2>Screw</h2>
           </div>
           <div className="mx-auto">
             <Link href="http://localhost:3000/login/google">
-              <button className="w-fit flex items-center gap-2 text-gray-100 justify-center px-4 py-2 text-xs hover:bg-gray-1100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-1100 bg-gray-1200">
+              <button className="w-fit flex items-center gap-2 text-gray-1200 justify-center px-4 py-2 text-xs hover:bg-gray-300 bg-gray-200 border-gray-500 border">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 48 48"
@@ -37,11 +37,6 @@ export default function Login() {
               </button>
             </Link>
           </div>
-        </div>
-      </div>
-      <div className="hidden md:flex md:w-1/2 relative bg-gray-1200">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <h3 className="text-gray-100 font-bold">tagg</h3>
         </div>
       </div>
     </div>

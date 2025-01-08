@@ -18,14 +18,7 @@ type FFMPEG struct {
 	Done    chan bool
 }
 
-type Options struct {
-	BPM           float32
-	BarsInterval  int
-	DropOffset    float64
-	WatermarkGain float64
-}
-
-func New(ctx context.Context, opts Options) (*FFMPEG, error) {
+func New(ctx context.Context) (*FFMPEG, error) {
 	irPath, err := filepath.Abs("audio/ir.wav")
 	if err != nil {
 		slog.Error("Failed to read IR", "error", err)
