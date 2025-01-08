@@ -1,7 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { Metadata } from "next";
 import "./globals.css";
-import Providers from "@/app/providers";
+import Providers from "@/components/providers";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tagger",
-  description: "Tag your audio files",
+  title: "screw",
+  description: "slowed + reverb",
 };
 
 export default function RootLayout({
@@ -24,7 +24,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.className} ${geistMono.className} bg-gray-100 text-gray-1200 antialiased h-[100dvh] text-sm`}
+        className={`${geistSans.className} ${geistMono.className} bg-gray-200 text-gray-1200 mx-auto antialiased h-[100dvh] text-xs p-4 max-w-96`}
+        suppressHydrationWarning
       >
         <Providers>{children}</Providers>
       </body>

@@ -1,14 +1,18 @@
 "use client";
 
-import useAuth from "@/app/auth";
-import useWebSocket from "@/app/use-ws";
+import useAuth from "@/hooks/use-auth";
+import useWebSocket from "@/hooks/use-ws";
+import Header from "@/components/header";
+import { Input } from "@/components/input";
 import { ProtectedRoute } from "@/components/protected-route";
 import NumberFlow from "@number-flow/react";
 import { useState, type ChangeEvent } from "react";
+import WaveForm from "@/components/waveform";
+import { AnimatePresence, motion } from "motion/react";
 
 export default function Home() {
+  const { user } = useAuth();
   const [files, setFiles] = useState<File[] | null>(null);
-  const { logout, user } = useAuth();
 
   function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
     const { files } = e.target;
@@ -19,62 +23,79 @@ export default function Home() {
 
   return (
     <ProtectedRoute>
-      <div className="h-full flex flex-col items-start justify-center gap-4 max-w-md mx-auto px-4 md:px-0">
-        <h1>SCREW</h1>
-        {user.data && (
-          <div>
-            <img
-              src={user.data.picture}
-              className="size-7 rounded-full"
-              alt={user.data.name}
-            />
-            <p>{user.data.email}</p>
-            <p>{user.data.name}</p>
-          </div>
-        )}
-        <button onClick={() => logout()}>log out</button>
-        <input
-          type="file"
-          onChange={handleFileSelect}
-          multiple
-          accept="audio/*"
-          className="w-full"
-          max={5}
-        />
-        {files?.map((file) => (
-          <AudioFile file={file} key={file.name.concat(String(file.size))} />
+      <div className="h-full flex flex-col items-start justify-start w-full">
+        <Header />
+        <span className="block capitalize pb-2">
+          Hi {user.data?.name.split(" ").at(0) ?? "unknown"}
+        </span>
+        <span className="block pb-2">
+          Select your audio files to screw them
+        </span>
+        <div className="w-full">
+          <Input
+            type="file"
+            onChange={handleFileSelect}
+            multiple
+            accept="audio/*"
+            max={5}
+          />
+        </div>
+        {files?.slice(0, 5).map((file, i) => (
+          <AudioFile
+            file={file}
+            key={file.name.concat(String(file.size))}
+            index={i}
+          />
         ))}
       </div>
     </ProtectedRoute>
   );
 }
 
-function AudioFile({ file }: { file: File }) {
-  const { isStreaming, processProgress, audioUrl } = useWebSocket(file);
+function AudioFile({ file, index }: { file: File; index: number }) {
+  const { isStreaming, processProgress, audioBlob } = useWebSocket(file);
   return (
-    <div className="w-full pt-2">
-      <div className="flex justify-between items-center mb-2 text-xs">
-        <span className="truncate max-w-[70%]">{file.name}</span>
-        {isStreaming ? (
-          <NumberFlow
-            value={processProgress}
-            format={{
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }}
-            willChange
-            suffix=" %"
-            trend={+1}
-          />
-        ) : null}
-      </div>
-      {audioUrl && (
-        <div className="w-full">
-          <audio controls className="w-full" src={audioUrl}>
-            Your browser does not support the audio element.
-          </audio>
-        </div>
-      )}
+    <div className="w-full pt-2 flex flex-col mt-24">
+      <AnimatePresence mode="popLayout">
+        <motion.div
+          className="flex justify-between items-start h-16"
+          style={{ flexDirection: audioBlob ? "column" : "row" }}
+        >
+          <motion.span
+            className="truncate max-w-[70%]"
+            layoutId={file.name.concat(String(index))}
+            key={file.name.concat(String(index))}
+          >
+            {file.name}
+          </motion.span>
+          {isStreaming ? (
+            <motion.div exit={{ opacity: 0 }}>
+              <NumberFlow
+                value={processProgress}
+                format={{
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }}
+                suffix=" %"
+                trend={+1}
+              />
+            </motion.div>
+          ) : null}
+
+          {audioBlob ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 1 }}
+              key={`wave-${file.name.concat(String(index))}`}
+              className="w-full"
+            >
+              <WaveForm blob={audioBlob} fileName={file.name} />
+            </motion.div>
+          ) : null}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
