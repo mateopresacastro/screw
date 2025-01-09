@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"os/exec"
 	"path/filepath"
 )
@@ -19,11 +20,19 @@ type FFMPEG struct {
 }
 
 func New(ctx context.Context) (*FFMPEG, error) {
-	irPath, err := filepath.Abs("audio/ir.wav")
+	irPath := "api/audio/ir.wav"
+
+	if envPath := os.Getenv("IR_PATH"); envPath != "" {
+		irPath = envPath
+	}
+
+	absPath, err := filepath.Abs(irPath)
 	if err != nil {
-		slog.Error("Failed to read IR", "error", err)
+		slog.Error("Failed to get absolute path for IR", "error", err)
 		return nil, err
 	}
+
+	slog.Info("Using IR file", "path", absPath)
 
 	filterComplex := "[0:a][1:a]afir=dry=10:wet=10[reverbed];[reverbed]highpass=f=40,lowpass=f=2300[filtered];[filtered]asetrate=44100*0.9,aresample=44100,atempo=0.97[out]"
 
@@ -31,7 +40,7 @@ func New(ctx context.Context) (*FFMPEG, error) {
 		"-hide_banner",
 		"-loglevel", "error",
 		"-i", "pipe:0", // Main audio
-		"-i", irPath, // IR file
+		"-i", absPath, // IR file
 		"-filter_complex", filterComplex,
 		"-map", "[out]",
 		"-c:a", "aac",

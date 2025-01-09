@@ -1,0 +1,23 @@
+name: screw
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      - ENV=prod
+      - IR_PATH=/app/audio/ir.wav
+    env_file:
+      - ./api/.env
+    restart: always
+
+  proxy:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: always

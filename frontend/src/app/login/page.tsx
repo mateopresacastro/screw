@@ -9,8 +9,8 @@ export default function Login() {
             <h2>Screw</h2>
           </div>
           <div className="mx-auto w-full">
-            <Link href="http://localhost:3000/login/google">
-              <button className="flex items-center gap-2 text-gray-1200 justify-center px-4 py-2 text-xs hover:bg-gray-400 bg-gray-300 border-gray-500 border w-full">
+            <Link href="http://localhost:80/api/login/google">
+              <button className="flex items-center gap-2 text-gray-1200 justify-center px-4 py-2 text-xs hover:bg-gray-400 bg-gray-300 border-gray-500 border w-full min-w-fit">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 48 48"

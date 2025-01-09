@@ -1,8 +1,8 @@
+import WaveSurfer from "wavesurfer.js";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { sand, sandDark } from "@radix-ui/colors";
-import WaveSurfer from "wavesurfer.js";
-import { IoPlaySharp, IoStopSharp } from "react-icons/io5";
+import { IoPlaySharp, IoPauseSharp } from "react-icons/io5";
 import { ArrowDownToLine } from "lucide-react";
 
 export default function WaveForm({
@@ -18,17 +18,17 @@ export default function WaveForm({
   const [isPlaying, setIsplaying] = useState(false);
 
   const colorPallete = resolvedTheme === "dark" ? sandDark : sand;
-  console.log({ resolvedTheme, color: colorPallete.sand8 });
+
   useEffect(() => {
     if (!blob || !waveformRef.current) return;
     const OPTIONS = {
       container: waveformRef.current,
-      barHeight: 4,
+      barHeight: 5,
       barWidth: 0.2,
-      height: 25,
+      height: 27,
       normalize: true,
-      waveColor: colorPallete.sand7,
-      progressColor: colorPallete.sand8,
+      waveColor: colorPallete.sand9,
+      progressColor: colorPallete.sand10,
       cursorColor: colorPallete.sand11,
       hideScrollbar: true,
     };
@@ -36,7 +36,7 @@ export default function WaveForm({
     wsRef.current = ws;
     ws.loadBlob(blob);
     return () => ws.destroy();
-  }, [blob, colorPallete.sand7, colorPallete.sand11, colorPallete.sand8]);
+  }, [blob, colorPallete.sand9, colorPallete.sand11, colorPallete.sand10]);
 
   function handlePlayPause() {
     if (!wsRef.current) return;
@@ -51,7 +51,7 @@ export default function WaveForm({
         className="mr-6 text-gray-1000 cursor-pointer hover:text-gray-1200"
       >
         {isPlaying ? (
-          <IoStopSharp className="size-[1.12rem]" />
+          <IoPauseSharp className="size-[1.12rem]" />
         ) : (
           <IoPlaySharp className="size-[1.12rem]" />
         )}
@@ -59,7 +59,7 @@ export default function WaveForm({
       <div ref={waveformRef} className="w-full cursor-pointer" />
       <div
         onClick={() => download(blob, fileName)}
-        className="ml-6 text-gray-1000 cursor-pointer hover:text-gray-1200"
+        className="ml-6 text-gray-800 cursor-pointer hover:text-gray-1200"
       >
         <ArrowDownToLine className="size-[1.12rem]" />
       </div>

@@ -18,7 +18,6 @@ import (
 
 const (
 	port = 3000
-	dir  = "/frontend/out"
 )
 
 var portStr = fmt.Sprintf(":%d", port)
@@ -34,27 +33,27 @@ func startServer(env string) error {
 	google := auth.NewGoogle(
 		os.Getenv("GOOGLE_CLIENT_ID"),
 		os.Getenv("GOOGLE_CLIENT_SECRET"),
-		"http://localhost:3000/login/google/callback",
+		"http://localhost/api/login/google/callback",
 		store,
 		sessionManager,
 	)
 	ws := ws.New(store)
 
-	mux.Handle("/", http.FileServer(http.Dir(dir)))
-	mux.Handle("/ws", herr.Wrap(ws.Handle))
-	mux.Handle("GET /login/google", herr.Wrap(google.HandleLogin))
-	mux.Handle("GET /login/google/callback", herr.Wrap(google.HandleCallBack))
-	mux.Handle("GET /login/session", herr.Wrap(sessionManager.HandleCurrentSession))
-	mux.Handle("POST /logout", herr.Wrap(sessionManager.HandleLogout))
+	mux.Handle("/api/ws", herr.Wrap(ws.Handle))
+	mux.Handle("GET /api/login/google", herr.Wrap(google.HandleLogin))
+	mux.Handle("GET /api/login/google/callback", herr.Wrap(google.HandleCallBack))
+	mux.Handle("GET /api/login/session", herr.Wrap(sessionManager.HandleCurrentSession))
+	mux.Handle("POST /api/logout", herr.Wrap(sessionManager.HandleLogout))
 
 	CORSAllowed := map[string]bool{
 		"http://localhost:3001": true,
+		"http://localhost":      true,
 	}
 
 	protectedRoutes := map[string]bool{
-		"/login/session": true,
-		"/logout":        true,
-		"/ws":            true,
+		"/api/login/session": true,
+		"/api/logout":        true,
+		"/api/ws":            true,
 	}
 
 	server := mw.Chain(

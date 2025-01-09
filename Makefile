@@ -8,10 +8,10 @@ install: compile
 	cd frontend && npm i && cd ../api && go mod download && air init
 
 build:
-	docker build -t tagger .
+	docker compose build
 
-start: build
-	docker run --env-file ./api/.env -ti -p 3000:3000 tagger
+start:
+	docker compose up
 
 test:
 	cd api && go test ./...

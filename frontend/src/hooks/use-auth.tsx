@@ -15,7 +15,7 @@ export default function useAuth() {
   const user = useQuery({
     queryKey: ["session"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:3000/login/session", {
+      const res = await fetch("http://localhost:80/api/login/session", {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Unauthorized");
@@ -28,7 +28,7 @@ export default function useAuth() {
   const { mutate: logout } = useMutation({
     mutationKey: ["logout"],
     mutationFn: async () => {
-      const res = await fetch("http://localhost:3000/logout", {
+      const res = await fetch("http://localhost:80/api/logout", {
         credentials: "include",
         method: "POST",
       });
