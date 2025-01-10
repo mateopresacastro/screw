@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 import { cookies } from "next/headers";
 import { z } from "zod";
 
@@ -15,10 +17,10 @@ export default async function auth() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
   try {
-    // Fetch from the "proxy" docker container.
+    // Fetch from the "proxy" docker container (nginx).
     const res = await fetch("http://proxy/api/login/session", {
       headers: {
-        Cookie: `session=${session?.value || ""}`,
+        Cookie: `session=${session?.value ?? ""}`,
       },
       cache: "no-store",
     });

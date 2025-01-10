@@ -35,13 +35,15 @@ export default function Main({ session }: { session: Session | null }) {
           max={5}
         />
       </div>
-      {files?.slice(0, 5).map((file, i) => (
-        <AudioFile
-          file={file}
-          key={file.name.concat(String(file.size))}
-          index={i}
-        />
-      ))}
+      <div className="w-full mt-36">
+        {files?.slice(0, 5).map((file, i) => (
+          <AudioFile
+            file={file}
+            key={file.name.concat(String(file.size))}
+            index={i}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -49,7 +51,7 @@ export default function Main({ session }: { session: Session | null }) {
 function AudioFile({ file, index }: { file: File; index: number }) {
   const { isStreaming, processProgress, audioBlob } = useWebSocket(file);
   return (
-    <div className="w-full pt-2 flex flex-col mt-24">
+    <div className="w-full pt-2 flex flex-col mb-16">
       <AnimatePresence mode="popLayout">
         <motion.div
           className="flex justify-between items-start h-16"

@@ -10,7 +10,7 @@ export async function logout() {
   const session = cookieStore.get("session");
   const res = await fetch("http://proxy/api/logout", {
     headers: {
-      Cookie: `session=${session?.value || ""}`,
+      Cookie: `session=${session?.value ?? ""}`,
     },
     cache: "no-store",
     method: "POST",
