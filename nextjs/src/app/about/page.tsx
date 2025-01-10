@@ -1,7 +1,7 @@
 "use client";
 
 import Header from "@/components/header";
-import Link from "../../../$node_modules/next/link.js";
+import Link from "next/link";
 
 export default function Home() {
   return (

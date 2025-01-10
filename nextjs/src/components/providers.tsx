@@ -1,12 +1,11 @@
 "use client";
 
-import { ThemeProvider } from "../../$node_modules/next-themes/dist/index.d.mts";
-
+import { ThemeProvider } from "next-themes";
 import {
-  isServer,
   QueryClient,
+  isServer,
   QueryClientProvider,
-} from "../../$node_modules/@tanstack/react-query/build/modern/index.js";
+} from "@tanstack/react-query";
 
 function makeQueryClient() {
   return new QueryClient();
