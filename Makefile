@@ -2,6 +2,7 @@
 
 dev:
 	docker compose -f compose.dev.yaml up --build
+
 prod:
 	docker compose -f compose.yaml up --build -d
 
