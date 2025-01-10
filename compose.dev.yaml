@@ -1,0 +1,41 @@
+name: screw-dev
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - ENV=dev
+      - IR_PATH=/app/audio/ir.wav
+    env_file:
+      - ./api/.env
+    volumes:
+      - ./api:/app
+      - data:/app/data
+    ports:
+      - "3000:3000"
+
+  nextjs:
+    build:
+      context: ./nextjs
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - ./nextjs:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+
+  proxy:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+
+volumes:
+  data:

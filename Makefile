@@ -1,17 +1,15 @@
+.PHONY: dev prod down clean
+
 dev:
-	ENV=dev concurrently \
-		--names "frontend,api" \
-		--prefix-colors "green,blue" \
-		"cd frontend && npx next lint --fix && npm run dev" "cd api && air"
+	docker compose -f compose.dev.yaml up --build
+prod:
+	docker compose -f compose.yaml up --build -d
 
-install: compile
-	cd frontend && npm i && cd ../api && go mod download && air init
+down:
+	docker compose -f compose.yaml down
+	docker compose -f compose.dev.yaml down
 
-build:
-	docker compose build
-
-start:
-	docker compose up
-
-test:
-	cd api && go test ./...
+clean:
+	docker compose -f compose.yaml down -v
+	docker compose -f compose.dev.yaml down -v
+	docker images -q screw* | xargs -r docker rmi

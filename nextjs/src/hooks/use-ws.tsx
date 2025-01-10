@@ -20,7 +20,7 @@ export default function useWebSocket(file: File) {
   const isError = status === "error";
 
   useEffect(() => {
-    const socket = new WebSocket(`ws://${window.location.host}/api/ws`);
+    const socket = new WebSocket("ws://localhost/api/ws");
     socket.addEventListener("open", handleOpen);
     socket.addEventListener("message", handleMessage);
     socket.addEventListener("close", handleDisconnect);
