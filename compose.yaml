@@ -15,7 +15,7 @@ services:
     restart: always
   nextjs:
     build:
-      context: ./frontend
+      context: ./nextjs
       dockerfile: Dockerfile
     ports:
       - "4000:4000"

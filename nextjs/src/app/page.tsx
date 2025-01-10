@@ -5,10 +5,10 @@ import useWebSocket from "@/hooks/use-ws";
 import Header from "@/components/header";
 import { Input } from "@/components/input";
 import { ProtectedRoute } from "@/components/protected-route";
-import NumberFlow from "@number-flow/react";
-import { useState, type ChangeEvent } from "react";
+import NumberFlow from "../../$node_modules/@number-flow/react/dist/index.d.mts";
+import { useState, type ChangeEvent } from "../../$node_modules/@types/react/index.js";
 import WaveForm from "@/components/waveform";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion } from "../../$node_modules/motion/dist/react.js";
 
 export default function Home() {
   const { user } = useAuth();

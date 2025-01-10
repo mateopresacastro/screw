@@ -1,5 +1,5 @@
 import useAuth from "@/hooks/use-auth";
-import Link from "next/link";
+import Link from "../../$node_modules/next/link.js";
 
 export default function Header() {
   const { logout } = useAuth();
