@@ -212,7 +212,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 			return herr.Internal(err, "Failed to create session for existing user")
 		}
 		g.sessionMgr.SetSessionCookie(w, newSessionToken, session.ExpiresAt)
-		http.Redirect(w, r, "http://localhost:3001", http.StatusFound)
+		http.Redirect(w, r, "http://localhost", http.StatusFound)
 		return nil
 	}
 
@@ -243,7 +243,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 	}
 
 	g.sessionMgr.SetSessionCookie(w, newSessionToken, session.ExpiresAt)
-	http.Redirect(w, r, "http://localhost:3001", http.StatusPermanentRedirect)
+	http.Redirect(w, r, "http://localhost", http.StatusPermanentRedirect)
 	return nil
 }
 

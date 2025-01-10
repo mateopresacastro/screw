@@ -11,5 +11,6 @@ COPY --from=builder /build/api/app /usr/bin/app
 COPY audio /app/audio
 ENV ENV=prod
 ENV IR_PATH=/app/audio/ir.wav
+RUN mkdir -p /app/data
 ENTRYPOINT ["/usr/bin/app"]
 EXPOSE 3000

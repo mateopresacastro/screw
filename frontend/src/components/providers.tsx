@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeProvider } from "next-themes";
+import RouteSync from "@/components/route-sync";
 
 import {
   isServer,
@@ -37,7 +38,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>{children}</ThemeProvider>
+      <ThemeProvider>
+        <RouteSync>{children}</RouteSync>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -14,7 +14,7 @@ type Store interface {
 func NewFromEnv(env string) (Store, error) {
 	switch env {
 	case "prod":
-		return newSQLiteStore("./app.db")
+		return newSQLiteStore("/app/data/app.db")
 	case "dev":
 		return newSQLiteStore("./dev.db")
 	default:
