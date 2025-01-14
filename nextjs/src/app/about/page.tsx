@@ -11,9 +11,10 @@ export default async function About() {
         WebSockets, FFmpeg, Docker, and Docker-Compose.
       </p>
       <p className="pb-36 ">
-        The audio streams via WebSocket to a Go API, where FFmpeg processes and
-        returns it through WebSocket in real-time. The streamed audio is then
-        buffered and rendered as a waveform.
+        The audio streams to a Go API via WebSocket connections, where FFmpeg
+        processes each stream in real-time. The processed audio is returned
+        through the same connections and buffered client-side, where it&apos;s
+        rendered as a waveform.
       </p>
       <Link href="https://mateo.id" className="mb-36">
         -{" "}

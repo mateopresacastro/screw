@@ -23,7 +23,7 @@ export default function Main({ session }: { session: Session | null }) {
       {session ? (
         <div className="flex items-center justify-center gap-2">
           <span>Hello {session.name.split(" ").at(0) ?? "unknown"}</span>
-          <img src={session.picture} className="rounded-full" />
+          <img src={session.picture} className="rounded-full size-4" />
         </div>
       ) : null}
       <span className="block pb-2">

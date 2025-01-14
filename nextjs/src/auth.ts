@@ -27,7 +27,7 @@ export default async function auth() {
     if (!res.ok) throw new Error("Unauthorized");
     const json = await res.json();
     return SessionSchema.parse(json);
-  } catch (error) {
+  } catch {
     return null;
   }
 }
