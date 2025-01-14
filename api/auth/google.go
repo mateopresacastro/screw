@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -57,17 +55,17 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) *herr.Error
 		return herr.Internal(err, "Failed to parse Google authorization URL")
 	}
 
-	state, err := createState()
+	state, err := cryptoutil.CreateState()
 	if err != nil {
 		return herr.Internal(err, "Failed to create OAuth state")
 	}
 
-	codeVerifier, err := createCodeVerifier()
+	codeVerifier, err := cryptoutil.CreateCodeVerifier()
 	if err != nil {
 		return herr.Internal(err, "Failed to create code verifier")
 	}
 
-	codeChallenge := createS256CodeChallenge(codeVerifier)
+	codeChallenge := cryptoutil.CreateS256CodeChallenge(codeVerifier)
 
 	query := authorizationURL.Query()
 	query.Set("response_type", "code")
@@ -124,21 +122,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 		return herr.BadRequest(err, "States differ")
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     g.stateCookieName,
-		Value:    "",
-		Path:     "/login",
-		MaxAge:   -1,
-		HttpOnly: true,
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     g.codeVerifierCookieName,
-		Value:    "",
-		Path:     "/login",
-		MaxAge:   -1,
-		HttpOnly: true,
-	})
+	g.deleteCookies(w)
 
 	formData := url.Values{
 		"grant_type":    {"authorization_code"},
@@ -203,15 +187,11 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 
 	existingUser, err := g.store.UserByGoogleID(userData.ID)
 	if err == nil && existingUser != nil {
-		newSessionToken, err := cryptoutil.Random()
-		if err != nil {
-			return herr.Internal(err, "Failed to generate session token for existing user")
-		}
-		session, err := g.sessionMgr.CreateSession(newSessionToken, existingUser.ID)
+		err := g.sessionMgr.CreateSession(w, existingUser.ID)
 		if err != nil {
 			return herr.Internal(err, "Failed to create session for existing user")
 		}
-		g.sessionMgr.SetSessionCookie(w, newSessionToken, session.ExpiresAt)
+
 		http.Redirect(w, r, "http://localhost", http.StatusFound)
 		return nil
 	}
@@ -232,38 +212,29 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Er
 		return herr.Internal(err, "Failed to create new user")
 	}
 
-	newSessionToken, err := cryptoutil.Random()
-	if err != nil {
-		return herr.Internal(err, "Failed to generate session token for new user")
-	}
-
-	session, err := g.sessionMgr.CreateSession(newSessionToken, newUserID)
+	err = g.sessionMgr.CreateSession(w, newUserID)
 	if err != nil {
 		return herr.Internal(err, "Failed to create session for new user")
 	}
 
-	g.sessionMgr.SetSessionCookie(w, newSessionToken, session.ExpiresAt)
 	http.Redirect(w, r, "http://localhost", http.StatusPermanentRedirect)
 	return nil
 }
 
-func createState() (string, error) {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(bytes), nil
-}
+func (g *google) deleteCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     g.stateCookieName,
+		Value:    "",
+		Path:     "/login",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
 
-func createCodeVerifier() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(bytes), nil
-}
-
-func createS256CodeChallenge(codeVerifier string) string {
-	hash := sha256.Sum256([]byte(codeVerifier))
-	return base64.RawURLEncoding.EncodeToString(hash[:])
+	http.SetCookie(w, &http.Cookie{
+		Name:     g.codeVerifierCookieName,
+		Value:    "",
+		Path:     "/login",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
 }

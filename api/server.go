@@ -30,6 +30,7 @@ func startServer(env string) error {
 	}
 
 	sessionManager := session.NewManager(store, 30, 15, env == "prod")
+	ws := ws.New(store)
 	google := auth.NewGoogle(
 		os.Getenv("GOOGLE_CLIENT_ID"),
 		os.Getenv("GOOGLE_CLIENT_SECRET"),
@@ -37,13 +38,11 @@ func startServer(env string) error {
 		store,
 		sessionManager,
 	)
-	ws := ws.New(store)
-
-	mux.Handle("/api/ws", herr.Wrap(ws.Handle))
-	mux.Handle("GET /api/login/google", herr.Wrap(google.HandleLogin))
-	mux.Handle("GET /api/login/google/callback", herr.Wrap(google.HandleCallBack))
-	mux.Handle("GET /api/login/session", herr.Wrap(sessionManager.HandleCurrentSession))
-	mux.Handle("POST /api/logout", herr.Wrap(sessionManager.HandleLogout))
+	mux.Handle("/api/ws", herr.W(ws.Handle))
+	mux.Handle("GET /api/login/google", herr.W(google.HandleLogin))
+	mux.Handle("GET /api/login/google/callback", herr.W(google.HandleCallBack))
+	mux.Handle("GET /api/login/session", herr.W(sessionManager.HandleCurrentSession))
+	mux.Handle("POST /api/logout", herr.W(sessionManager.HandleLogout))
 
 	CORSAllowed := map[string]bool{
 		"http://localhost:3001": true,

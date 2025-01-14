@@ -35,8 +35,12 @@ func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresho
 	}
 }
 
-func (m *Manager) CreateSession(token string, userID int64) (*store.Session, error) {
-	err := m.InvalidateUserSessions(userID)
+func (m *Manager) CreateSession(w http.ResponseWriter, userID int64) error {
+	token, err := cryptoutil.Random()
+	if err != nil {
+		return err
+	}
+	err = m.InvalidateUserSessions(userID)
 	if err != nil {
 		slog.Warn("Error deleting old sessions", "err", err)
 	}
@@ -45,9 +49,10 @@ func (m *Manager) CreateSession(token string, userID int64) (*store.Session, err
 	expiresAt := m.newExpiresAt()
 	session, err := m.store.CreateSession(sessionID, userID, expiresAt)
 	if err != nil {
-		return nil, fmt.Errorf("error creating session: %w", err)
+		return fmt.Errorf("error creating session: %w", err)
 	}
-	return session, nil
+	m.SetSessionCookie(w, token, session.ExpiresAt)
+	return nil
 }
 
 type SessionValidationResult struct {

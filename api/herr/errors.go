@@ -16,9 +16,9 @@ type Error struct {
 	Code        int
 }
 
-type Wrap func(w http.ResponseWriter, r *http.Request) *Error
+type W func(w http.ResponseWriter, r *http.Request) *Error
 
-func (fn Wrap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (fn W) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil {
 		slog.Error("Error in handler:", "desc", e.Desc, "httpMessage", e.HTTPMessage, "code", e.Code)
 		http.Error(w, e.HTTPMessage, e.Code)
