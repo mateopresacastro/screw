@@ -21,11 +21,14 @@ export default function Main({ session }: { session: Session | null }) {
   return (
     <div className="h-full flex flex-col items-start justify-start w-full">
       {session ? (
-        <span className="block">
-          Hello {session.name.split(" ").at(0) ?? "unknown"}
-        </span>
+        <div className="flex items-center justify-center gap-2">
+          <span>Hello {session.name.split(" ").at(0) ?? "unknown"}</span>
+          <img src={session.picture} className="rounded-full" />
+        </div>
       ) : null}
-      <span className="block pb-2">Select your audio files to screw them:</span>
+      <span className="block pb-2">
+        Select your audio files to screw them (slowed + reverb):
+      </span>
       <div className="w-full">
         <Input
           type="file"

@@ -28,7 +28,6 @@ export default async function auth() {
     const json = await res.json();
     return SessionSchema.parse(json);
   } catch (error) {
-    console.error("Error in auth", { error });
     return null;
   }
 }
