@@ -1,4 +1,4 @@
-package herr
+package hr
 
 import (
 	"context"

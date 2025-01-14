@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"sync"
 	"tagg/ffmpeg"
-	"tagg/herr"
+	"tagg/hr"
 	"tagg/store"
 	"time"
 
@@ -50,35 +50,35 @@ func New(store store.Store) *WS {
 	return &WS{store: store}
 }
 
-func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *herr.Error {
+func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *hr.Error {
 	slog.Info("New websocket connection - trying to upgrade")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return herr.Internal(err, "Failed to upgrade websocket connection")
+		return hr.Internal(err, "Failed to upgrade websocket connection")
 	}
 	defer conn.Close()
 	slog.Info("Upgraded")
 
 	err = conn.NetConn().SetDeadline(time.Now().Add(5 * time.Minute))
 	if err != nil {
-		herr.WS(conn, err, "Connection deadline error")
+		hr.WS(conn, err, "Connection deadline error")
 		return nil
 	}
 
 	messageType, message, err := conn.ReadMessage()
 	if err != nil {
-		herr.WS(conn, err, "Error reading first message")
+		hr.WS(conn, err, "Error reading first message")
 		return nil
 	}
 
 	if messageType != websocket.TextMessage {
-		herr.WS(conn, err, "First message must be metadata")
+		hr.WS(conn, err, "First message must be metadata")
 		return nil
 	}
 
 	var meta Metadata
 	if err := json.Unmarshal(message, &meta); err != nil {
-		herr.WS(conn, err, "Error initializing ffmpeg")
+		hr.WS(conn, err, "Error initializing ffmpeg")
 		return nil
 	}
 
@@ -89,7 +89,7 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *herr.Error {
 
 	ffmpeg, err := ffmpeg.New(ctx)
 	if err != nil {
-		herr.WS(conn, err, "Error initializing ffmpeg")
+		hr.WS(conn, err, "Error initializing ffmpeg")
 		return nil
 	}
 
@@ -104,10 +104,10 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *herr.Error {
 	slog.Info("Listening to websocket. Waiting for processing completion or errors.")
 	select {
 	case err := <-ffmpeg.ErrChan:
-		herr.WS(conn, err, "Stream processing error")
+		hr.WS(conn, err, "Stream processing error")
 		return nil
 	case <-ffmpeg.Done:
-		herr.WSClose(conn, "Processing complete")
+		hr.WSClose(conn, "Processing complete")
 		return nil
 	case <-ctx.Done():
 		slog.Info("The context was cancelled")

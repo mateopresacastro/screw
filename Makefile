@@ -14,3 +14,6 @@ clean:
 	docker compose -f compose.yaml down -v
 	docker compose -f compose.dev.yaml down -v
 	docker images -q screw* | xargs -r docker rmi
+
+test:
+	cd api && go test ./...

@@ -8,14 +8,14 @@ import (
 	"log/slog"
 	"net/http"
 	"tagg/cryptoutil"
-	"tagg/herr"
+	"tagg/hr"
 	"tagg/store"
 	"time"
 )
 
 const (
 	SessionContextKey = "session"
-	sessionCookieName = "session"
+	SessionCookieName = "session"
 	oneDayInHours     = 24
 )
 
@@ -24,6 +24,11 @@ type Manager struct {
 	sessionExpirationInDays int64
 	refreshThresholdInDays  int64
 	isProd                  bool
+}
+
+type SessionValidationResult struct {
+	Session *store.Session `json:"session"`
+	User    *store.User    `json:"user"`
 }
 
 func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresholdInDays int64, isProd bool) *Manager {
@@ -35,10 +40,10 @@ func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresho
 	}
 }
 
-func (m *Manager) CreateSession(w http.ResponseWriter, userID int64) error {
+func (m *Manager) CreateSession(w http.ResponseWriter, userID int64) (string, error) {
 	token, err := cryptoutil.Random()
 	if err != nil {
-		return err
+		return "", err
 	}
 	err = m.InvalidateUserSessions(userID)
 	if err != nil {
@@ -49,15 +54,10 @@ func (m *Manager) CreateSession(w http.ResponseWriter, userID int64) error {
 	expiresAt := m.newExpiresAt()
 	session, err := m.store.CreateSession(sessionID, userID, expiresAt)
 	if err != nil {
-		return fmt.Errorf("error creating session: %w", err)
+		return "", fmt.Errorf("error creating session: %w", err)
 	}
 	m.SetSessionCookie(w, token, session.ExpiresAt)
-	return nil
-}
-
-type SessionValidationResult struct {
-	Session *store.Session `json:"session"`
-	User    *store.User    `json:"user"`
+	return token, nil
 }
 
 func (m *Manager) newExpiresAt() int64 {
@@ -110,7 +110,7 @@ func (m *Manager) InvalidateUserSessions(userID int64) error {
 
 func (m *Manager) SetSessionCookie(w http.ResponseWriter, token string, expiresAt int64) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
+		Name:     SessionCookieName,
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
@@ -122,7 +122,7 @@ func (m *Manager) SetSessionCookie(w http.ResponseWriter, token string, expiresA
 
 func (m *Manager) DeleteSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
+		Name:     SessionCookieName,
 		Value:    "",
 		HttpOnly: true,
 		Path:     "/",
@@ -133,7 +133,7 @@ func (m *Manager) DeleteSessionCookie(w http.ResponseWriter) {
 }
 
 func (m *Manager) GetCurrentSession(r *http.Request) (*SessionValidationResult, error) {
-	cookie, err := r.Cookie(sessionCookieName)
+	cookie, err := r.Cookie(SessionCookieName)
 	if err != nil {
 		return nil, fmt.Errorf("error getting session cookie: %w", err)
 	}
@@ -155,10 +155,10 @@ func FromContext(ctx context.Context) (*SessionValidationResult, bool) {
 	return session, ok
 }
 
-func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) *herr.Error {
+func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) *hr.Error {
 	result, ok := FromContext(r.Context())
 	if !ok {
-		return herr.Unauthorized(errors.New("no session"), "No session data on context")
+		return hr.Unauthorized(errors.New("no session"), "No session data on context")
 	}
 
 	response := struct {
@@ -174,20 +174,20 @@ func (m *Manager) HandleCurrentSession(w http.ResponseWriter, r *http.Request) *
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		return herr.Internal(err, "Error encoding response")
+		return hr.Internal(err, "Error encoding response")
 	}
 	return nil
 }
 
-func (m *Manager) HandleLogout(w http.ResponseWriter, r *http.Request) *herr.Error {
+func (m *Manager) HandleLogout(w http.ResponseWriter, r *http.Request) *hr.Error {
 	result, ok := FromContext(r.Context())
 	if !ok {
-		return herr.Unauthorized(errors.New("no session"), "No session data on context")
+		return hr.Unauthorized(errors.New("no session"), "No session data on context")
 	}
 
 	err := m.InvalidateSession(result.Session.ID)
 	if err != nil {
-		return herr.Internal(err, "Error invalidating session")
+		return hr.Internal(err, "Error invalidating session")
 	}
 
 	m.DeleteSessionCookie(w)
