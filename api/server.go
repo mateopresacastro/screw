@@ -53,7 +53,6 @@ func startServer(env string) error {
 	protectedRoutes := map[string]bool{
 		"/api/login/session": true,
 		"/api/logout":        true,
-		"/api/ws":            true,
 	}
 
 	server := mw.Chain(

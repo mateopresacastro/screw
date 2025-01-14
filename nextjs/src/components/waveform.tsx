@@ -40,7 +40,7 @@ export default function WaveForm({
 
   function handlePlayPause() {
     if (!wsRef.current) return;
-    wsRef.current.playPause()
+    wsRef.current.playPause();
     setIsplaying((s) => !s);
   }
 
