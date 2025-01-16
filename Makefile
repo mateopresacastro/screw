@@ -16,14 +16,10 @@ clean:
 	docker images -q screw* | xargs -r docker rmi
 
 push:
-	@echo "Pushing images to GitHub Container Registry..."
-	docker build -t ghcr.io/mateopresacastro/screw/api:latest ./api
-	docker build -t ghcr.io/mateopresacastro/screw/nextjs:latest ./nextjs
-	docker build -t ghcr.io/mateopresacastro/screw/proxy:latest ./nginx
-	docker push ghcr.io/mateopresacastro/screw/api:latest
-	docker push ghcr.io/mateopresacastro/screw/nextjs:latest
-	docker push ghcr.io/mateopresacastro/screw/proxy:latest
-	@echo "Images successfully pushed to GHCR."
+	docker buildx build --platform linux/amd64 -t ghcr.io/mateopresacastro/screw/api:latest ./api --push
+	docker buildx build --platform linux/amd64 -t ghcr.io/mateopresacastro/screw/nextjs:latest ./nextjs --push
+	docker buildx build --platform linux/amd64 -t ghcr.io/mateopresacastro/screw/proxy:latest ./nginx --push
+
 
 test:
 	cd api && go test ./...
