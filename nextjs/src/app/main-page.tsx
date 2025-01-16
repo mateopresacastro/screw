@@ -53,7 +53,6 @@ export default function Main({ session }: { session: Session | null }) {
 
 function AudioFile({ file, index }: { file: File; index: number }) {
   const { isStreaming, processProgress, audioBlob } = useWebSocket(file);
-  console.log({ audioBlob });
   return (
     <div className="w-full pt-2 flex flex-col mb-16">
       <AnimatePresence mode="popLayout">
