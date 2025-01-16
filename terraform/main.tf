@@ -2,7 +2,6 @@ provider "aws" {
   region = "eu-central-1"
 }
 
-# Use your existing SSH key
 resource "aws_key_pair" "screw_key" {
   key_name   = "screw-key"
   public_key = file("~/.ssh/id_rsa.pub")
@@ -51,8 +50,4 @@ resource "aws_instance" "screw_server" {
   tags = {
     Name = "screw-server"
   }
-}
-
-output "ssh_command" {
-  value = "ssh -i ~/.ssh/id_rsa ubuntu@${aws_instance.screw_server.public_ip}"
 }
