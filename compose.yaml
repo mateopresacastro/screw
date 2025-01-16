@@ -3,6 +3,7 @@ name: screw
 services:
   api:
     image: ghcr.io/mateopresacastro/screw/api:latest
+    platform: linux/arm64
     environment:
       - ENV=prod
       - IR_PATH=/app/audio/ir.wav
@@ -14,10 +15,12 @@ services:
 
   nextjs:
     image: ghcr.io/mateopresacastro/screw/nextjs:latest
+    platform: linux/arm64
     restart: always
 
   proxy:
     image: ghcr.io/mateopresacastro/screw/proxy:latest
+    platform: linux/arm64
     ports:
       - "80:80"
     restart: always
