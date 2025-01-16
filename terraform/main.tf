@@ -26,6 +26,13 @@ resource "aws_security_group" "screw_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -36,7 +43,7 @@ resource "aws_security_group" "screw_sg" {
 
 # EC2 instance
 resource "aws_instance" "screw_server" {
-  ami             = "ami-00a830443b0381486"  # Amazon Linux 2 AMI
+  ami             = "ami-00a830443b0381486" # Amazon Linux 2 AMI
   instance_type   = "t2.micro"
   security_groups = [aws_security_group.screw_sg.name]
   key_name        = aws_key_pair.screw_key.key_name
