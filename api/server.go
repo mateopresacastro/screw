@@ -43,6 +43,10 @@ func startServer(env string) error {
 	mux.Handle("GET /api/login/google/callback", hr.W(google.HandleCallBack))
 	mux.Handle("GET /api/login/session", hr.W(sessionManager.HandleCurrentSession))
 	mux.Handle("POST /api/logout", hr.W(sessionManager.HandleLogout))
+	mux.Handle("GET /api/healthcheck", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	}))
 
 	CORSAllowed := map[string]bool{
 		"http://localhost:3001": true,

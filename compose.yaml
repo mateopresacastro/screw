@@ -2,9 +2,7 @@ name: screw
 
 services:
   api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    image: ghcr.io/mateopresacastro/screw/api:latest
     environment:
       - ENV=prod
       - IR_PATH=/app/audio/ir.wav
@@ -13,15 +11,13 @@ services:
     volumes:
       - data:/app/data
     restart: always
+
   nextjs:
-    build:
-      context: ./nextjs
-      dockerfile: Dockerfile
+    image: ghcr.io/mateopresacastro/screw/nextjs:latest
     restart: always
+
   proxy:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
+    image: ghcr.io/mateopresacastro/screw/proxy:latest
     ports:
       - "80:80"
     restart: always
