@@ -112,10 +112,10 @@ jobs:
       - name: Deploy to EC2 using Session Manager
         run: |
           # Copy files to instance
-          aws ssm put-parameter --name "/screw/deploy-script" --type "String" --value "$(cat deploy.sh)"
-          aws ssm put-parameter --name "/screw/docker-compose" --type "String" --value "$(cat compose.yaml)"
-          aws ssm put-parameter --name "/screw/nginx-conf" --type "String" --value "$(cat nginx/nginx.conf)"
-          aws ssm put-parameter --name "/screw/makefile" --type "String" --value "$(cat Makefile)"
+          aws ssm put-parameter --name "/screw/deploy-script" --type "String" --value "$(cat deploy.sh)" --overwrite
+          aws ssm put-parameter --name "/screw/docker-compose" --type "String" --value "$(cat compose.yaml)" --overwrite
+          aws ssm put-parameter --name "/screw/nginx-conf" --type "String" --value "$(cat nginx/nginx.conf)" --overwrite
+          aws ssm put-parameter --name "/screw/makefile" --type "String" --value "$(cat Makefile)" --overwrite
 
           # Run deployment command
           aws ssm send-command \
