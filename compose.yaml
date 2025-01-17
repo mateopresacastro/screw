@@ -1,5 +1,4 @@
 name: screw
-
 services:
   api:
     image: ghcr.io/mateopresacastro/screw/api:latest
@@ -12,10 +11,12 @@ services:
     volumes:
       - data:/app/data
     restart: always
+
   nextjs:
     image: ghcr.io/mateopresacastro/screw/nextjs:latest
     platform: linux/amd64
     restart: always
+
   proxy:
     image: ghcr.io/mateopresacastro/screw/proxy:latest
     platform: linux/amd64
@@ -23,8 +24,19 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
     restart: always
+    depends_on:
+      - api
+      - nextjs
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email mateopresacastro@gmail.com --agree-tos --no-eff-email --force-renewal -d screw.mateo.id
 
 volumes:
   data:
