@@ -120,7 +120,7 @@ jobs:
           # Run deployment command
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
-            --targets "Key=instance-ids,Values=${{ secrets.INSTANCE_ID }}" \
+            --instance-ids "${{ secrets.INSTANCE_ID }}" \
             --parameters "commands=[
               'cd /home/ec2-user/app',
               'aws ssm get-parameter --name \"/screw/deploy-script\" --query \"Parameter.Value\" --output text > deploy.sh',
