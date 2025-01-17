@@ -112,7 +112,7 @@ jobs:
         run: |
           # Copy files to instance
           aws ssm put-parameter --name "/screw/deploy-script" --type "String" --value "$(cat deploy.sh)"
-          aws ssm put-parameter --name "/screw/docker-compose" --type "String" --value "$(cat docker-compose.yaml)"
+          aws ssm put-parameter --name "/screw/docker-compose" --type "String" --value "$(cat compose.yaml)"
           aws ssm put-parameter --name "/screw/nginx-conf" --type "String" --value "$(cat nginx/nginx.conf)"
 
           # Run deployment command

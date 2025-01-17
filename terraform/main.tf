@@ -22,6 +22,17 @@ variable "github_repository" {
   description = "GitHub repository name in format owner/repo"
 }
 
+# Create the OIDC Provider for GitHub
+resource "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+
+  client_id_list = ["sts.amazonaws.com"]
+
+  thumbprint_list = [
+    "6938fd4d98bab03faadb97b34396831e3780aea1" # GitHub's OIDC thumbprint
+  ]
+}
+
 # IAM role for EC2
 resource "aws_iam_role" "ssm_role" {
   name = "screw_ssm_role"
@@ -133,11 +144,14 @@ resource "aws_iam_role" "github_actions" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Effect = "Allow"
         Principal = {
-          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+          Federated = aws_iam_openid_connect_provider.github.arn
         }
         Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
           StringLike = {
-            "token.actions.githubusercontent.com:sub": "repo:${var.github_repository}:*"
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:*"
           }
         }
       }
@@ -157,17 +171,27 @@ resource "aws_iam_role_policy" "github_actions" {
         Effect = "Allow"
         Action = [
           "ssm:PutParameter",
-          "ssm:GetParameter",
+          "ssm:GetParameter"
+        ]
+        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/screw/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "ssm:SendCommand"
         ]
-        Resource = "*"
+        Resource = [
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:document/AWS-RunShellScript",
+          "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.screw_server.id}"
+        ]
       }
     ]
   })
 }
 
-# Get current AWS account ID
+# Data sources
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 # Outputs
 output "public_ip" {
