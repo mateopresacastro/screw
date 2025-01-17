@@ -101,24 +101,17 @@ resource "aws_security_group" "screw_sg" {
 
 # EC2 instance
 resource "aws_instance" "screw_server" {
-  ami           = "ami-00a830443b0381486"
+  ami           = "ami-00a830443b0381486" 
   instance_type = "t2.micro"
 
   iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
   security_groups      = [aws_security_group.screw_sg.name]
 
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y docker make
-              service docker start
-              usermod -a -G docker ec2-user
-              curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-              chmod +x /usr/local/bin/docker-compose
-              yum install -y certbot
-              mkdir -p /home/ec2-user/app
-              chmod 755 /home/ec2-user/app
-              EOF
+  user_data = file("${path.module}/user_data.sh")
+
+  root_block_device {
+    volume_size = 30  # Increase root volume size to 30GB
+  }
 
   tags = {
     Name = "screw-server"
