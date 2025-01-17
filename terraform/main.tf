@@ -110,12 +110,14 @@ resource "aws_instance" "screw_server" {
   user_data = <<-EOF
               #!/bin/bash
               yum update -y
-              yum install -y docker
+              yum install -y docker make
               service docker start
               usermod -a -G docker ec2-user
               curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
               chmod +x /usr/local/bin/docker-compose
               yum install -y certbot
+              mkdir -p /home/ec2-user/app
+              chmod 755 /home/ec2-user/app
               EOF
 
   tags = {

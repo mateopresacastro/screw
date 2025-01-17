@@ -10,12 +10,11 @@ env:
   AWS_REGION: eu-central-1
 
 jobs:
-  build-and-push:
+  build-api:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,6 +37,25 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/api:latest
 
+  build-nextjs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.PAT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push NextJS image
         uses: docker/build-push-action@v5
         with:
@@ -45,6 +63,25 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/nextjs:latest
+
+  build-proxy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.PAT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build and push Proxy image
         uses: docker/build-push-action@v5
@@ -55,12 +92,11 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/proxy:latest
 
   deploy:
-    needs: build-and-push
+    needs: [build-api, build-nextjs, build-proxy]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -70,6 +106,8 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActionsSession
+          mask-aws-account-id: false
 
       - name: Create deployment script
         run: |
@@ -79,30 +117,22 @@ jobs:
           mkdir -p data/certbot/conf
           mkdir -p data/certbot/www
 
-          # Pull latest images
-          docker pull ghcr.io/${{ github.repository }}/api:latest
-          docker pull ghcr.io/${{ github.repository }}/nextjs:latest
-          docker pull ghcr.io/${{ github.repository }}/proxy:latest
+          # Stop any existing services
+          make down
 
           # Check if certificates exist
-          if [ ! -d "/etc/letsencrypt/live/${{ secrets.DOMAIN_NAME }}" ]; then
-            # Stop any running containers
-            docker compose down
-
+          if [ ! -d "/etc/letsencrypt/live/screw.mateo.id" ]; then
             # Start nginx temporarily for certificate acquisition
-            docker compose up -d proxy
+            docker compose -f compose.yaml up -d proxy
 
             # Run certbot
             docker compose run --rm certbot certonly --webroot --webroot-path=/var/www/certbot \
               --email ${{ secrets.CERTBOT_EMAIL }} --agree-tos --no-eff-email \
-              --force-renewal -d ${{ secrets.DOMAIN_NAME }}
+              --force-renewal -d screw.mateo.id
           fi
 
-          # Replace domain in nginx config
-          sed -i "s/your-domain.com/${{ secrets.DOMAIN_NAME }}/g" nginx/nginx.conf
-
-          # Start all services
-          docker compose up -d
+          # Start all services in production mode
+          make prod
 
           # Setup automatic certificate renewal
           (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/docker compose run --rm certbot renew --quiet && /usr/bin/docker compose exec proxy nginx -s reload") | crontab -
@@ -114,6 +144,7 @@ jobs:
           aws ssm put-parameter --name "/screw/deploy-script" --type "String" --value "$(cat deploy.sh)"
           aws ssm put-parameter --name "/screw/docker-compose" --type "String" --value "$(cat compose.yaml)"
           aws ssm put-parameter --name "/screw/nginx-conf" --type "String" --value "$(cat nginx/nginx.conf)"
+          aws ssm put-parameter --name "/screw/makefile" --type "String" --value "$(cat Makefile)"
 
           # Run deployment command
           aws ssm send-command \
@@ -124,6 +155,7 @@ jobs:
               'aws ssm get-parameter --name \"/screw/deploy-script\" --query \"Parameter.Value\" --output text > deploy.sh',
               'aws ssm get-parameter --name \"/screw/docker-compose\" --query \"Parameter.Value\" --output text > docker-compose.yaml',
               'aws ssm get-parameter --name \"/screw/nginx-conf\" --query \"Parameter.Value\" --output text > nginx/nginx.conf',
+              'aws ssm get-parameter --name \"/screw/makefile\" --query \"Parameter.Value\" --output text > Makefile',
               'chmod +x deploy.sh',
               './deploy.sh'
             ]"
