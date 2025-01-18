@@ -14,6 +14,7 @@ import (
 	"tagg/ws"
 
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -47,6 +48,7 @@ func startServer(env string) error {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	}))
+	mux.Handle("GET /metrics", promhttp.Handler())
 
 	CORSAllowed := map[string]bool{
 		"http://localhost:3001":  true,
@@ -65,6 +67,7 @@ func startServer(env string) error {
 		mw.Logger(),
 		mw.CORS(CORSAllowed),
 		mw.Protect(protectedRoutes, sessionManager),
+		mw.Metrics(),
 	)
 
 	slog.Info("Server is listening", "port", port, "env", env)

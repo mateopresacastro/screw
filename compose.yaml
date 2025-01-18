@@ -38,5 +38,21 @@ services:
       - /home/ec2-user/app/data/certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3100:3000"
+    restart: always
+    depends_on:
+      - prometheus
+
 volumes:
   data:
+  prometheus_data:
+  grafana_data:

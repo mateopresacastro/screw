@@ -99,7 +99,7 @@ resource "aws_security_group" "screw_sg" {
 
 # EC2 instance
 resource "aws_instance" "screw_server" {
-  ami           = "ami-0669b163befffbdfc"  # Amazon Linux 2023 AMI for eu-central-1
+  ami           = "ami-0669b163befffbdfc"
   instance_type = "t2.micro"
 
   iam_instance_profile = aws_iam_instance_profile.ssm_profile.name

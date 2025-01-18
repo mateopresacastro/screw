@@ -71,3 +71,19 @@ certbot/certbot certonly --standalone \
 
 # Set final permissions
 chown -R ec2-user:ec2-user /home/ec2-user/app/data/certbotata
+
+# Create prometheus configuration file
+cat > /home/ec2-user/app/prometheus.yml << EOL
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'screw-api'
+    static_configs:
+      - targets: ['api:3000']
+    metrics_path: '/metrics'
+EOL
+
+# Set proper permissions for prometheus config
+chown ec2-user:ec2-user /home/ec2-user/app/prometheus.yml
+chmod 644 /home/ec2-user/app/prometheus.yml
