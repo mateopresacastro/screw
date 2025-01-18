@@ -35,6 +35,11 @@ mkdir -p /home/ec2-user/app/data/certbot/conf
 mkdir -p /home/ec2-user/app/data/certbot/www
 chown -R ec2-user:ec2-user /home/ec2-user/app/data
 
+# Create directories for .env
+mkdir -p /home/ec2-user/app/api
+chown ec2-user:ec2-user /home/ec2-user/app/api
+chmod 755 /home/ec2-user/app/api
+
 # Create SSL configuration file
 cat > /home/ec2-user/app/data/certbot/conf/options-ssl-nginx.conf << EOL
 ssl_session_cache shared:le_nginx_SSL:10m;
