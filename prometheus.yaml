@@ -6,3 +6,4 @@ scrape_configs:
     static_configs:
       - targets: ["api:3000"]
     metrics_path: "/metrics"
+    scheme: http

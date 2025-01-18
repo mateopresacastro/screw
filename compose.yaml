@@ -46,8 +46,11 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    ports:
-      - "3100:3000"
+    environment:
+      - GF_SERVER_ROOT_URL=https://screw.mateo.id/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      - grafana_data:/var/lib/grafana
     restart: always
     depends_on:
       - prometheus
@@ -55,4 +58,6 @@ services:
 volumes:
   data:
   prometheus_data:
+    driver: local
   grafana_data:
+    driver: local
