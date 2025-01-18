@@ -27,7 +27,7 @@ export default function Main({ session }: { session: Session | null }) {
         </div>
       ) : null}
       <span className="block pb-2">
-        SELECT your audio files to screw them (slowed + reverb):
+        Select your audio files to screw them (slowed + reverb):
       </span>
       <div className="w-full">
         <Input

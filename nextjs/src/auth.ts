@@ -17,8 +17,7 @@ export default async function auth() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
   try {
-    // Fetch from the "proxy" docker container (nginx).
-    const res = await fetch("http://proxy/api/login/session", {
+    const res = await fetch("https://screw.mateo.id/api/login/session", {
       headers: {
         Cookie: `session=${session?.value ?? ""}`,
       },
