@@ -83,7 +83,7 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) *hr.Error {
 		Value:    state,
 		MaxAge:   int(10 * time.Minute),
 		HttpOnly: true,
-		Secure:   false, // TODO: change when https
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -92,7 +92,7 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) *hr.Error {
 		Value:    codeVerifier,
 		MaxAge:   int(10 * time.Minute),
 		HttpOnly: true,
-		Secure:   false, // TODO: change when https
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 
