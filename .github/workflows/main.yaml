@@ -104,4 +104,4 @@ jobs:
           aws ssm send-command \
             --instance-ids ${{ secrets.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="sudo su - ec2-user && cd /home/ec2-user/app && sudo -u ec2-user make prod"
+            --parameters commands="sudo su - ec2-user && cd /home/ec2-user/app && make prod"
