@@ -119,12 +119,31 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Copy configuration files to EC2
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands="\
+              cd /home/ec2-user/app && \
+              sudo -u ec2-user tee Makefile << 'EOF'
+              $(cat Makefile)
+              EOF
+              sudo -u ec2-user tee compose.yaml << 'EOF'
+              $(cat compose.yaml)
+              EOF
+              sudo -u ec2-user tee prometheus.yml << 'EOF'
+              $(cat prometheus.yml)
+              EOF"
+
       - name: Login to GitHub Container Registry on EC2
         run: |
           aws ssm send-command \
             --instance-ids ${{ secrets.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters commands="sudo -u ec2-user docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.PAT }}"
+
       - name: Deploy to EC2
         run: |
           aws ssm send-command \
