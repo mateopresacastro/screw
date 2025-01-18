@@ -49,8 +49,9 @@ func startServer(env string) error {
 	}))
 
 	CORSAllowed := map[string]bool{
-		"http://localhost:3001": true,
-		"http://localhost":      true,
+		"http://localhost:3001":  true,
+		"http://localhost":       true,
+		"https://screw.mateo.id": true,
 	}
 
 	protectedRoutes := map[string]bool{
