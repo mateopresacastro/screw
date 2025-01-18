@@ -97,19 +97,29 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *hr.Error {
 		ffmpeg.Close()
 		slog.Info("Websocket connection ended")
 	}()
+	readDone := make(chan struct{})
+	writeDone := make(chan struct{})
 
-	go readWebSocketAndPipeToFFMPEG(ctx, ffmpeg, conn, &writeMu, meta.FileSize, meta.FileName)
-	go readFFMPEGAndWriteToSocket(ctx, ffmpeg, conn, &writeMu)
+	go readWebSocketAndPipeToFFMPEG(ctx, ffmpeg, conn, &writeMu, meta.FileSize, meta.FileName, readDone)
+	go readFFMPEGAndWriteToSocket(ctx, ffmpeg, conn, &writeMu, writeDone)
 
 	slog.Info("Listening to websocket. Waiting for processing completion or errors.")
 	select {
 	case err := <-ffmpeg.ErrChan:
+		cancel()
+		<-readDone
+		<-writeDone
 		hr.WS(conn, err, "Stream processing error")
 		return nil
 	case <-ffmpeg.Done:
+		cancel()
+		<-readDone
+		<-writeDone
 		hr.WSClose(conn, "Processing complete")
 		return nil
 	case <-ctx.Done():
+		<-readDone
+		<-writeDone
 		slog.Info("The context was cancelled")
 		return nil
 	}
@@ -120,28 +130,25 @@ func readFFMPEGAndWriteToSocket(
 	ffmpeg *ffmpeg.FFMPEG,
 	conn *websocket.Conn,
 	writeMu *sync.Mutex,
+	done chan struct{},
 ) {
+	defer close(done)
 	buffer := make([]byte, 32*1024)
-	processOutput := func() error {
-		n, err := ffmpeg.Stdout.Read(buffer)
-		if err != nil {
-			return err
-		}
-		if err := writeMessage(websocket.BinaryMessage, buffer[:n], conn, writeMu); err != nil {
-			return err
-		}
-		return nil
-	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			if err := processOutput(); err != nil {
+			n, err := ffmpeg.Stdout.Read(buffer)
+			if err != nil {
 				if err == io.EOF {
 					ffmpeg.Done <- true
 					return
 				}
+				ffmpeg.ErrChan <- err
+				return
+			}
+			if err := writeMessage(websocket.BinaryMessage, buffer[:n], conn, writeMu); err != nil {
 				ffmpeg.ErrChan <- err
 				return
 			}
@@ -156,11 +163,11 @@ func readWebSocketAndPipeToFFMPEG(
 	writeMu *sync.Mutex,
 	fileSize int64,
 	fileName string,
+	done chan struct{},
 ) {
-	var (
-		receivedBytes int64
-		lastProgress  float64
-	)
+	defer close(done)
+	var receivedBytes int64
+	var lastProgress float64
 
 	logTicker := time.NewTicker(2 * time.Second)
 	defer logTicker.Stop()
@@ -185,7 +192,6 @@ func readWebSocketAndPipeToFFMPEG(
 					websocket.CloseGoingAway,
 					websocket.CloseNoStatusReceived,
 				) {
-					slog.Info("WebSocket closed normally by client")
 					ffmpeg.Done <- true
 					return
 				}
