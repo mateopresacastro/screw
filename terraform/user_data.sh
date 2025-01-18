@@ -7,8 +7,8 @@ while [ ! -f /var/lib/cloud/instance/boot-finished ]; do
 done
 
 # Update system packages
-dnf update -y
-dnf install -y docker curl make
+sudo dnf update -y
+sudo dnf install -y docker  make
 
 # Start and enable Docker
 systemctl start docker

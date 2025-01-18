@@ -6,7 +6,6 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   AWS_REGION: eu-central-1
-
 jobs:
   build-api:
     runs-on: ubuntu-latest
@@ -31,7 +30,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/api:latest
-
   build-nextjs:
     runs-on: ubuntu-latest
     permissions:
@@ -55,7 +53,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/nextjs:latest
-
   build-proxy:
     runs-on: ubuntu-latest
     permissions:
@@ -79,7 +76,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/proxy:latest
-
   deploy:
     needs: [build-api, build-nextjs, build-proxy]
     runs-on: ubuntu-latest
@@ -96,25 +92,43 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Setup deployment directory
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands="sudo mkdir -p /home/ec2-user/app && sudo chown ec2-user:ec2-user /home/ec2-user/app"
+
       - name: Login to GitHub Container Registry on EC2
         run: |
           aws ssm send-command \
             --instance-ids ${{ secrets.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.PAT }}"
+            --parameters commands="sudo -u ec2-user docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.PAT }}"
 
-      - name: Copy docker-compose.yml to EC2
+      - name: Copy files to EC2
         run: |
+          # Copy Makefile
           aws ssm send-command \
             --instance-ids ${{ secrets.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="cat > /home/ec2-user/app/docker-compose.yml << 'EOL'
-            ${{ github.workspace }}/docker-compose.yml
-            EOL"
+            --parameters commands='cat > /home/ec2-user/app/Makefile << EOL
+            ${{ github.workspace }}/Makefile
+            EOL
+            sudo chown ec2-user:ec2-user /home/ec2-user/app/Makefile'
+
+          # Copy compose.yaml
+          aws ssm send-command \
+            --instance-ids ${{ secrets.INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands='cat > /home/ec2-user/app/compose.yaml << EOL
+            ${{ github.workspace }}/compose.yaml
+            EOL
+            sudo chown ec2-user:ec2-user /home/ec2-user/app/compose.yaml'
 
       - name: Deploy to EC2
         run: |
           aws ssm send-command \
             --instance-ids ${{ secrets.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="cd /home/ec2-user/app && docker-compose pull && docker-compose up -d"
+            --parameters commands="cd /home/ec2-user/app && sudo -u ec2-user make prod"
