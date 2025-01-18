@@ -130,4 +130,4 @@ jobs:
           aws ssm send-command \
             --instance-ids ${{ secrets.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="sudo su - ec2-user && cd /home/ec2-user/app && make prod"
+            --parameters commands="sudo su - ec2-user && cd /home/ec2-user/app && make prod && docker image prune --force"
