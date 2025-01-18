@@ -92,13 +92,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup deployment directory
-        run: |
-          aws ssm send-command \
-            --instance-ids ${{ secrets.INSTANCE_ID }} \
-            --document-name "AWS-RunShellScript" \
-            --parameters commands="sudo mkdir -p /home/ec2-user/app && sudo chown ec2-user:ec2-user /home/ec2-user/app"
-
       - name: Login to GitHub Container Registry on EC2
         run: |
           aws ssm send-command \
@@ -106,29 +99,9 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters commands="sudo -u ec2-user docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.PAT }}"
 
-      - name: Copy files to EC2
-        run: |
-          # Copy Makefile
-          aws ssm send-command \
-            --instance-ids ${{ secrets.INSTANCE_ID }} \
-            --document-name "AWS-RunShellScript" \
-            --parameters commands='cat > /home/ec2-user/app/Makefile << EOL
-            ${{ github.workspace }}/Makefile
-            EOL
-            sudo chown ec2-user:ec2-user /home/ec2-user/app/Makefile'
-
-          # Copy compose.yaml
-          aws ssm send-command \
-            --instance-ids ${{ secrets.INSTANCE_ID }} \
-            --document-name "AWS-RunShellScript" \
-            --parameters commands='cat > /home/ec2-user/app/compose.yaml << EOL
-            ${{ github.workspace }}/compose.yaml
-            EOL
-            sudo chown ec2-user:ec2-user /home/ec2-user/app/compose.yaml'
-
       - name: Deploy to EC2
         run: |
           aws ssm send-command \
             --instance-ids ${{ secrets.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="cd /home/ec2-user/app && sudo -u ec2-user make prod"
+            --parameters commands="sudo su - ec2-user && cd /home/ec2-user/app && sudo -u ec2-user make prod"

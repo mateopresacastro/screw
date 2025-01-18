@@ -209,8 +209,6 @@ To complete the setup:
    - INSTANCE_ID: ${aws_instance.screw_server.id}
    - DOMAIN_NAME: ${var.domain_name}
    - CERTBOT_EMAIL: [Your email address]
-2. SSH into the instance and run:
-   docker-compose up -d
-3. Your server IP is: ${aws_eip.screw_eip.public_ip}
+2. Your server IP is: ${aws_eip.screw_eip.public_ip}
 EOT
 }

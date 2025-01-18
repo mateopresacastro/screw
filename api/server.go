@@ -34,7 +34,7 @@ func startServer(env string) error {
 	google := auth.NewGoogle(
 		os.Getenv("GOOGLE_CLIENT_ID"),
 		os.Getenv("GOOGLE_CLIENT_SECRET"),
-		"http://localhost/api/login/google/callback",
+		"https://screw.mateo.id/api/login/google/callback",
 		store,
 		sessionManager,
 	)

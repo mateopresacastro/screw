@@ -192,7 +192,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 			return hr.Internal(err, "Failed to create session for existing user")
 		}
 
-		http.Redirect(w, r, "http://localhost", http.StatusFound)
+		http.Redirect(w, r, "https://screw.mateo.id", http.StatusFound)
 		return nil
 	}
 
@@ -217,7 +217,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 		return hr.Internal(err, "Failed to create session for new user")
 	}
 
-	http.Redirect(w, r, "http://localhost", http.StatusPermanentRedirect)
+	http.Redirect(w, r, "http://screw.mateo.id", http.StatusPermanentRedirect)
 	return nil
 }
 
