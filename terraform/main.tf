@@ -22,21 +22,21 @@ variable "github_repository" {
   description = "GitHub repository name in format owner/repo"
 }
 
+# VPC Data Source
+data "aws_vpc" "default" {
+  default = true
+}
+
 # Create the OIDC Provider for GitHub
 resource "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
-
   client_id_list = ["sts.amazonaws.com"]
-
-  thumbprint_list = [
-    "6938fd4d98bab03faadb97b34396831e3780aea1" # GitHub's OIDC thumbprint
-  ]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
 
 # IAM role for EC2
 resource "aws_iam_role" "ssm_role" {
   name = "screw_ssm_role"
-
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -63,21 +63,18 @@ resource "aws_iam_instance_profile" "ssm_profile" {
   role = aws_iam_role.ssm_role.name
 }
 
-# Create an Elastic IP
-resource "aws_eip" "screw_eip" {
-  instance = aws_instance.screw_server.id
-  domain   = "vpc"
-}
-
 # Security group
 resource "aws_security_group" "screw_sg" {
-  name = "screw-sg"
+  name        = "screw-sg"
+  description = "Security group for Screw application"
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTP"
   }
 
   ingress {
@@ -85,6 +82,7 @@ resource "aws_security_group" "screw_sg" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTPS"
   }
 
   egress {
@@ -101,31 +99,29 @@ resource "aws_security_group" "screw_sg" {
 
 # EC2 instance
 resource "aws_instance" "screw_server" {
-  ami           = "ami-00a830443b0381486" 
+  ami           = "ami-0669b163befffbdfc"  # Amazon Linux 2023 AMI for eu-central-1
   instance_type = "t2.micro"
 
   iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
-  security_groups      = [aws_security_group.screw_sg.name]
-
-  user_data = file("${path.module}/user_data.sh")
+  vpc_security_group_ids = [aws_security_group.screw_sg.id]
 
   root_block_device {
-    volume_size = 30  # Increase root volume size to 30GB
+    volume_size = 30
+    volume_type = "gp3"
+    encrypted   = true
   }
+
+  user_data = file("${path.module}/user_data.sh")
 
   tags = {
     Name = "screw-server"
   }
 }
 
-# SSL Certificate
-resource "aws_acm_certificate" "cert" {
-  domain_name       = var.domain_name
-  validation_method = "DNS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
+# Create an Elastic IP
+resource "aws_eip" "screw_eip" {
+  instance = aws_instance.screw_server.id
+  domain   = "vpc"
 }
 
 # Create IAM Role for GitHub Actions
@@ -166,15 +162,14 @@ resource "aws_iam_role_policy" "github_actions" {
         Effect = "Allow"
         Action = [
           "ssm:PutParameter",
-          "ssm:GetParameter"
+          "ssm:GetParameter",
+          "ssm:GetParameters"
         ]
         Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/screw/*"
       },
       {
         Effect = "Allow"
-        Action = [
-          "ssm:SendCommand"
-        ]
+        Action = ["ssm:SendCommand"]
         Resource = [
           "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:document/AWS-RunShellScript",
           "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.screw_server.id}"
@@ -182,9 +177,7 @@ resource "aws_iam_role_policy" "github_actions" {
       },
       {
         Effect = "Allow"
-        Action = [
-          "ssm:SendCommand"
-        ]
+        Action = ["ssm:SendCommand"]
         Resource = "arn:aws:ssm:${data.aws_region.current.name}::document/AWS-RunShellScript"
       }
     ]
@@ -204,23 +197,20 @@ output "instance_id" {
   value = aws_instance.screw_server.id
 }
 
-output "certificate_arn" {
-  value = aws_acm_certificate.cert.arn
-}
-
 output "github_actions_role_arn" {
   value = aws_iam_role.github_actions.arn
-  description = "ARN of the IAM role for GitHub Actions"
 }
 
-output "github_actions_setup_instructions" {
+output "setup_instructions" {
   value = <<EOT
-To complete GitHub Actions setup:
+To complete the setup:
 1. Add these secrets to your GitHub repository:
    - AWS_ROLE_ARN: ${aws_iam_role.github_actions.arn}
    - INSTANCE_ID: ${aws_instance.screw_server.id}
    - DOMAIN_NAME: ${var.domain_name}
    - CERTBOT_EMAIL: [Your email address]
-2. Configure OIDC provider in your GitHub repository settings
+2. SSH into the instance and run:
+   docker-compose up -d
+3. Your server IP is: ${aws_eip.screw_eip.public_ip}
 EOT
 }

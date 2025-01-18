@@ -1,9 +1,7 @@
 name: CI/CD
-
 on:
   push:
     branches: [main]
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -18,17 +16,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.PAT }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
@@ -45,17 +40,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.PAT }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Build and push NextJS image
         uses: docker/build-push-action@v5
         with:
@@ -72,17 +64,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.PAT }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Build and push Proxy image
         uses: docker/build-push-action@v5
         with:
@@ -106,27 +95,26 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActionsSession
-          mask-aws-account-id: false
 
-      - name: Deploy to EC2 using Session Manager
+      - name: Login to GitHub Container Registry on EC2
         run: |
-          # Copy files to instance
-          aws ssm put-parameter --name "/screw/deploy-script" --type "String" --value "$(cat deploy.sh)" --overwrite
-          aws ssm put-parameter --name "/screw/docker-compose" --type "String" --value "$(cat compose.yaml)" --overwrite
-          aws ssm put-parameter --name "/screw/nginx-conf" --type "String" --value "$(cat nginx/nginx.conf)" --overwrite
-          aws ssm put-parameter --name "/screw/makefile" --type "String" --value "$(cat Makefile)" --overwrite
-
-          # Run deployment command
           aws ssm send-command \
+            --instance-ids ${{ secrets.INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --instance-ids "${{ secrets.INSTANCE_ID }}" \
-            --parameters "commands=[
-              'cd /home/ec2-user/app',
-              'aws ssm get-parameter --name \"/screw/deploy-script\" --query \"Parameter.Value\" --output text > deploy.sh',
-              'aws ssm get-parameter --name \"/screw/docker-compose\" --query \"Parameter.Value\" --output text > docker-compose.yaml',
-              'aws ssm get-parameter --name \"/screw/nginx-conf\" --query \"Parameter.Value\" --output text > nginx/nginx.conf',
-              'aws ssm get-parameter --name \"/screw/makefile\" --query \"Parameter.Value\" --output text > Makefile',
-              'chmod +x deploy.sh',
-              './deploy.sh'
-            ]"
+            --parameters commands="docker login ${{ env.REGISTRY }} -u ${{ github.actor }} -p ${{ secrets.PAT }}"
+
+      - name: Copy docker-compose.yml to EC2
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands="cat > /home/ec2-user/app/docker-compose.yml << 'EOL'
+            ${{ github.workspace }}/docker-compose.yml
+            EOL"
+
+      - name: Deploy to EC2
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands="cd /home/ec2-user/app && docker-compose pull && docker-compose up -d"

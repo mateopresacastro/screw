@@ -7,7 +7,7 @@ services:
       - ENV=prod
       - IR_PATH=/app/audio/ir.wav
     env_file:
-      - ./api/.env
+      - /home/ec2-user/app/api/.env
     volumes:
       - data:/app/data
     restart: always
@@ -24,8 +24,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
+      - /home/ec2-user/app/data/certbot/conf:/etc/letsencrypt:ro
+      - /home/ec2-user/app/data/certbot/www:/var/www/certbot
     restart: always
     depends_on:
       - api
@@ -34,9 +34,9 @@ services:
   certbot:
     image: certbot/certbot
     volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
-    command: certonly --webroot --webroot-path=/var/www/certbot --email mateopresacastro@gmail.com --agree-tos --no-eff-email --force-renewal -d screw.mateo.id
+      - /home/ec2-user/app/data/certbot/conf:/etc/letsencrypt
+      - /home/ec2-user/app/data/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 volumes:
   data:
