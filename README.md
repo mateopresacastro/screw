@@ -42,14 +42,17 @@ Key components:
 
 ## How to run
 
+> [!NOTE]
+> At one point this project was deployed. That's why there is `HCL` code in `/terraform`. I'm no longer running it to not incur in costs. To try it out you need to follow the instructions below.
+
 ### Prerequisites
 
-- `Docker` and `Docker Compose`
+- `Docker` and `Docker Compose`.
 - Google `OAuth2.0` credentials (optional).
 
 ### Setup
 
-1. Clone the repository
+1. Clone the repository.
 2. Copy the example env file:
 
    ```bash
@@ -65,11 +68,13 @@ Key components:
 
 ## Grafana
 
-To see Grafana:
+To setup the dashboard:
 
 1. Go to `localhost:8080/grafana`.
-2. Log in with `admin` `admin`.
-3. Create `password`.
+2. Log in with default credentials:
+   - Username: `admin`
+   - Password: `admin`
+3. Create a new `password`.
 4. Click on the burger menu on the left. Click `Connections` > `Data Sources` > `+ Add new data sources`.
 5. Click `Prometheus` from the list.
 6. Set `http://prometheus:9090` in the `Connection` input.
