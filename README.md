@@ -43,7 +43,7 @@ Key components:
 ## How to run
 
 > [!NOTE]
-> At one point this project was deployed. That's why there is `HCL` code in `/terraform`. I'm no longer running it to not incur in costs. To try it out you need to follow the instructions below.
+> At one point this project was deployed. That's why there is `HCL` code in `/terraform`. I'm no longer running it to not incur costs. To try it out you need to follow the instructions below.
 
 ### Prerequisites
 
