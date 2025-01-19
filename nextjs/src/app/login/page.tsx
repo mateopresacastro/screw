@@ -2,7 +2,7 @@ export default function Login() {
   return (
     <div className="">
       <div className="mx-auto w-full">
-        <a href="https://screw.mateo.id/api/login/google">
+        <a href={`${process.env.NEXT_PUBLIC_HOST}/api/login/google`}>
           <button className="flex items-center gap-2 text-gray-1200 justify-center px-4 py-2 text-xs hover:bg-gray-400 bg-gray-300 border-gray-500 border w-full min-w-fit">
             <svg
               xmlns="http://www.w3.org/2000/svg"

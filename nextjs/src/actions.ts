@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 export async function logout() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
-  const res = await fetch("https://screw.mateo.id/api/logout", {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_HOST}/api/logout`, {
     headers: {
       Cookie: `session=${session?.value ?? ""}`,
     },

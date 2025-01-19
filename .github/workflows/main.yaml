@@ -1,7 +1,5 @@
 name: CI/CD
-on:
-  push:
-    branches: [main]
+on: [] # Stopped running CICD as the infra is no longer running
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}

@@ -17,12 +17,15 @@ export default async function auth() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
   try {
-    const res = await fetch("https://screw.mateo.id/api/login/session", {
-      headers: {
-        Cookie: `session=${session?.value ?? ""}`,
-      },
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_HOST}/api/login/session`,
+      {
+        headers: {
+          Cookie: `session=${session?.value ?? ""}`,
+        },
+        cache: "no-store",
+      }
+    );
     if (!res.ok) throw new Error("Unauthorized");
     const json = await res.json();
     return SessionSchema.parse(json);
