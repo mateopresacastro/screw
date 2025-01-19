@@ -43,7 +43,7 @@ Key components:
 ## How to run
 
 > [!NOTE]
-> At one point this project was deployed. That's why there is `HCL` code in `/terraform`. I'm no longer running it to not incur costs. To try it out you need to follow the instructions below.
+> At one point this project was deployed to `AWS` with a `GitHub Actions` pipeline. That's why you'll find `HCL` code in `/terraform` and CI/CD config in `.github/workflows/main.yaml`. I'm no longer running it to avoid costs. If you want to deploy this, you'll need to adapt the configuration for your use case. To try it out locally, follow the instructions below.
 
 ### Prerequisites
 
