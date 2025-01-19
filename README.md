@@ -1,6 +1,6 @@
 # Screw
 
-A little project with [`Go`](https://go.dev/), [`Next.js`](https://nextjs.org/), [`0Auth2.0`](https://datatracker.ietf.org/doc/html/rfc6749), `DB Sessions`, [`Nginx`](https://nginx.org/), [`SQLite`](https://sqlite.org/), [`WebSocket`](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket), [`FFmpeg`](https://www.ffmpeg.org/), and [`Docker`](https://www.docker.com/).
+A little project with [`Go`](https://go.dev/), [`Next.js`](https://nextjs.org/), [`0Auth2.0`](https://datatracker.ietf.org/doc/html/rfc6749), `DB Sessions`, [`Nginx`](https://nginx.org/), [`SQLite`](https://sqlite.org/), [`WebSocket`](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket), [`FFmpeg`](https://www.ffmpeg.org/), [`Docker`](https://www.docker.com/),[`Grafana`](https://grafana.com/) and [`Prometheus`](https://prometheus.io/)
 
 The audio streams to a `Go` `API` via `WebSocket` connections, where `FFmpeg` processes each stream in real-time (slowed + reverb). The processed audio is returned through the same connections and buffered client-side, where it's rendered as a waveform.
 
