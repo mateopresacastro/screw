@@ -8,10 +8,10 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"screw/ffmpeg"
+	"screw/hr"
+	"screw/store"
 	"sync"
-	"tagg/ffmpeg"
-	"tagg/hr"
-	"tagg/store"
 	"time"
 
 	"github.com/gorilla/websocket"

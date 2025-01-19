@@ -9,7 +9,7 @@ services:
       - ENV=dev
       - IR_PATH=/app/audio/ir.wav
     env_file:
-      - ./api/.env
+      - ./.env
     volumes:
       - ./api:/app
       - data:/app/data
@@ -21,6 +21,8 @@ services:
       context: ./nextjs
       dockerfile: Dockerfile
       target: development
+    env_file:
+      - ./.env
     volumes:
       - ./nextjs:/app
       - /app/node_modules
@@ -35,7 +37,19 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "8080:80"
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - grafana_data:/var/lib/grafana
 
 volumes:
   data:
+  grafana_data:

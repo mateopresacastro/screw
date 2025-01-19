@@ -11,17 +11,6 @@ type Store interface {
 	RefreshSession(sessionID string, newExpiresAt int64) error
 }
 
-func NewFromEnv(env string) (Store, error) {
-	switch env {
-	case "prod":
-		return newSQLiteStore("/app/data/app.db")
-	case "dev":
-		return newSQLiteStore("./dev.db")
-	default:
-		return newSQLiteStore("./dev.db")
-	}
-}
-
 func New(dbPath string) (Store, error) {
 	return newSQLiteStore(dbPath)
 }

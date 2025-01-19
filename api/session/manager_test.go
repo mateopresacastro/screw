@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"tagg/session"
-	"tagg/store"
+	"screw/session"
+	"screw/store"
 	"testing"
 	"time"
 )
@@ -43,7 +43,7 @@ func cleanupTestDB(t *testing.T) {
 func TestSessionCreation(t *testing.T) {
 	s, _, userID := setupTest(t)
 	defer cleanupTestDB(t)
-	m := session.NewManager(s, 30, 15, false)
+	m := session.NewManager(s, 30, 15)
 
 	w := httptest.NewRecorder()
 	token, err := m.CreateSession(w, userID)
@@ -71,7 +71,7 @@ func TestSessionCreation(t *testing.T) {
 func TestSessionValidation(t *testing.T) {
 	s, user, _ := setupTest(t)
 	defer cleanupTestDB(t)
-	m := session.NewManager(s, 30, 15, false)
+	m := session.NewManager(s, 30, 15)
 
 	t.Run("valid token", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -113,7 +113,7 @@ func TestSessionValidation(t *testing.T) {
 func TestSessionExpiration(t *testing.T) {
 	s, _, userID := setupTest(t)
 	defer cleanupTestDB(t)
-	m := session.NewManager(s, 1, 1, false)
+	m := session.NewManager(s, 1, 1)
 
 	w := httptest.NewRecorder()
 	token, err := m.CreateSession(w, userID)
@@ -143,7 +143,7 @@ func TestSessionExpiration(t *testing.T) {
 func TestSessionInvalidation(t *testing.T) {
 	s, user, _ := setupTest(t)
 	defer cleanupTestDB(t)
-	m := session.NewManager(s, 30, 15, false)
+	m := session.NewManager(s, 30, 15)
 
 	t.Run("invalidate user sessions", func(t *testing.T) {
 		w1 := httptest.NewRecorder()
@@ -186,7 +186,7 @@ func TestSessionRefresh(t *testing.T) {
 	t.Run("within refresh threshold", func(t *testing.T) {
 		s, _, userID := setupTest(t)
 		defer cleanupTestDB(t)
-		m := session.NewManager(s, 30, 7, false)
+		m := session.NewManager(s, 30, 7)
 
 		w := httptest.NewRecorder()
 		token, err := m.CreateSession(w, userID)
@@ -219,7 +219,7 @@ func TestSessionRefresh(t *testing.T) {
 	t.Run("outside refresh threshold", func(t *testing.T) {
 		s, _, userID := setupTest(t)
 		defer cleanupTestDB(t)
-		m := session.NewManager(s, 30, 7, false)
+		m := session.NewManager(s, 30, 7)
 
 		w := httptest.NewRecorder()
 		token, err := m.CreateSession(w, userID)
@@ -253,7 +253,7 @@ func TestSessionRefresh(t *testing.T) {
 func TestGetCurrentSession(t *testing.T) {
 	s, _, userID := setupTest(t)
 	defer cleanupTestDB(t)
-	m := session.NewManager(s, 30, 15, false)
+	m := session.NewManager(s, 30, 15)
 
 	t.Run("valid session", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -308,7 +308,7 @@ func TestGetCurrentSession(t *testing.T) {
 func TestHandleCurrentSession(t *testing.T) {
 	s, user, _ := setupTest(t)
 	defer cleanupTestDB(t)
-	m := session.NewManager(s, 30, 15, false)
+	m := session.NewManager(s, 30, 15)
 
 	t.Run("valid session", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -357,7 +357,7 @@ func TestHandleCurrentSession(t *testing.T) {
 func TestHandleLogout(t *testing.T) {
 	s, user, _ := setupTest(t)
 	defer cleanupTestDB(t)
-	m := session.NewManager(s, 30, 15, false)
+	m := session.NewManager(s, 30, 15)
 
 	t.Run("successful logout", func(t *testing.T) {
 		w := httptest.NewRecorder()

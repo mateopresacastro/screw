@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"tagg/cryptoutil"
-	"tagg/hr"
-	"tagg/store"
+	"screw/cryptoutil"
+	"screw/hr"
+	"screw/store"
 	"time"
 )
 
@@ -23,7 +23,6 @@ type Manager struct {
 	store                   store.Store
 	sessionExpirationInDays int64
 	refreshThresholdInDays  int64
-	isProd                  bool
 }
 
 type SessionValidationResult struct {
@@ -31,12 +30,11 @@ type SessionValidationResult struct {
 	User    *store.User    `json:"user"`
 }
 
-func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresholdInDays int64, isProd bool) *Manager {
+func NewManager(store store.Store, sessionExpirationInDays int64, refreshThresholdInDays int64) *Manager {
 	return &Manager{
 		store:                   store,
 		sessionExpirationInDays: sessionExpirationInDays,
 		refreshThresholdInDays:  refreshThresholdInDays,
-		isProd:                  isProd,
 	}
 }
 
@@ -114,7 +112,7 @@ func (m *Manager) SetSessionCookie(w http.ResponseWriter, token string, expiresA
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
-		Secure:   m.isProd,
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Unix(expiresAt, 0),
 	})
@@ -126,7 +124,7 @@ func (m *Manager) DeleteSessionCookie(w http.ResponseWriter) {
 		Value:    "",
 		HttpOnly: true,
 		Path:     "/",
-		Secure:   m.isProd,
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})

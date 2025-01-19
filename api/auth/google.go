@@ -6,15 +6,15 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"screw/cryptoutil"
+	"screw/hr"
+	"screw/session"
+	"screw/store"
 	"strings"
-	"tagg/cryptoutil"
-	"tagg/hr"
-	"tagg/session"
-	"tagg/store"
 	"time"
 )
 
-type google struct {
+type Google struct {
 	clientID               string
 	clientSecret           string
 	callbackURL            string
@@ -25,6 +25,7 @@ type google struct {
 	userInfoUrl            string
 	stateCookieName        string
 	codeVerifierCookieName string
+	host                   string
 }
 
 type tokenResponse struct {
@@ -34,22 +35,32 @@ type tokenResponse struct {
 	ExpiresIn    int    `json:"expires_in"`
 }
 
-func NewGoogle(clientID, clientSecret, callbackURL string, store store.Store, sessionMgr *session.Manager) *google {
-	return &google{
-		clientID:               clientID,
-		clientSecret:           clientSecret,
-		callbackURL:            callbackURL,
-		store:                  store,
-		sessionMgr:             sessionMgr,
-		authUrl:                "https://accounts.google.com/o/oauth2/v2/auth",
-		tokenUrl:               "https://oauth2.googleapis.com/token",
-		userInfoUrl:            "https://www.googleapis.com/oauth2/v2/userinfo",
+type GoogleCgf struct {
+	ClientID     string
+	ClientSecret string
+	CallbackURL  string
+	Store        store.Store
+	SessionMgr   *session.Manager
+	Host         string
+}
+
+func NewGoogle(cfg GoogleCgf) *Google {
+	return &Google{
+		clientID:               cfg.ClientID,
+		clientSecret:           cfg.ClientSecret,
+		callbackURL:            cfg.CallbackURL,
+		store:                  cfg.Store,
+		sessionMgr:             cfg.SessionMgr,
+		host:                   cfg.Host,
+		authUrl:                "https://accounts.Google.com/o/oauth2/v2/auth",
+		tokenUrl:               "https://oauth2.Googleapis.com/token",
+		userInfoUrl:            "https://www.Googleapis.com/oauth2/v2/userinfo",
 		stateCookieName:        "google_oauth_state",
 		codeVerifierCookieName: "google_code_verifier",
 	}
 }
 
-func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) *hr.Error {
+func (g *Google) HandleLogin(w http.ResponseWriter, r *http.Request) *hr.Error {
 	authorizationURL, err := url.Parse(g.authUrl)
 	if err != nil {
 		return hr.Internal(err, "Failed to parse Google authorization URL")
@@ -100,7 +111,7 @@ func (g *google) HandleLogin(w http.ResponseWriter, r *http.Request) *hr.Error {
 	return nil
 }
 
-func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Error {
+func (g *Google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Error {
 	query := r.URL.Query()
 	code := query.Get("code")
 	state := query.Get("state")
@@ -192,7 +203,7 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 			return hr.Internal(err, "Failed to create session for existing user")
 		}
 
-		http.Redirect(w, r, "https://screw.mateo.id/about", http.StatusFound)
+		http.Redirect(w, r, g.host+"/about", http.StatusFound)
 		return nil
 	}
 
@@ -217,11 +228,11 @@ func (g *google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 		return hr.Internal(err, "Failed to create session for new user")
 	}
 
-	http.Redirect(w, r, "http://screw.mateo.id/about", http.StatusPermanentRedirect)
+	http.Redirect(w, r, g.host+"/about", http.StatusPermanentRedirect)
 	return nil
 }
 
-func (g *google) deleteCookies(w http.ResponseWriter) {
+func (g *Google) deleteCookies(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     g.stateCookieName,
 		Value:    "",

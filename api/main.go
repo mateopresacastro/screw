@@ -3,19 +3,21 @@ package main
 import (
 	"log/slog"
 	"os"
+	"screw/server"
 )
 
 func main() {
-	env := getEnv("ENV", "dev")
-	if err := startServer(env); err != nil {
+	cfg := server.ServerCfg{
+		Host:         os.Getenv("HOST"),
+		ClientId:     os.Getenv("CLIENT_ID"),
+		ClientSecret: os.Getenv("CLIENT_SECRET"),
+		Env:          os.Getenv("ENV"),
+		DBPath:       "dev.db",
+	}
+	s := server.New(cfg)
+	err := s.Start()
+	if err != nil {
 		slog.Error("Application failed", "err", err)
 		os.Exit(1)
 	}
-}
-
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
 }
