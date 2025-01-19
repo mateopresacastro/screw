@@ -70,6 +70,8 @@ Key components:
    make dev
    ```
 
+5. Go to `localhost:8080`
+
 ## Grafana
 
 To setup the dashboard:
