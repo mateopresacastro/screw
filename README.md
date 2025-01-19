@@ -23,7 +23,7 @@ The audio streams to a `Go` `API` via `WebSocket` connections, where `FFmpeg` pr
 
 ## How it works
 
-From the client you can select up to `5` audio files. For each selected file a new `WebSocket` connection gets created. The `Go` `API` handles them concurrently. And spawns a new `FFmpeg` process for each. The data flows from the client, through the `API`, through `FFmpeg` `stdin`, and gets sent right back from `stdout` to the `WebSocket`. In the client the data gets buffered in a `Blob`. Then a new `URL` gets created for that `Blob`. The waveform and playback are enabled by [`wavesurfer.js`](https://wavesurfer.xyz/).
+From the client you can select up to `5` audio files. For each selected file a new `WebSocket` connection gets created. The `Go` `API` handles them concurrently. And spawns a new `FFmpeg` process for each. The data flows from the client, through the `API`, through `FFmpeg` `stdin`, and gets sent back from `stdout` to the `WebSocket`. In the client the data gets buffered in a `Blob`. Then a new `URL` gets created for it. The waveform and playback are enabled by [`wavesurfer.js`](https://wavesurfer.xyz/).
 
 The convolution reverb is created by using the impulse response in `api/audio/ir.wav`.
 
