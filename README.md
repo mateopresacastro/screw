@@ -40,12 +40,14 @@ Key components:
 - Session management using `SQLite`.
 - Token refresh handling.
 
-## Prerequisites
+## How to run
+
+### Prerequisites
 
 - `Docker` and `Docker Compose`
 - Google `OAuth2.0` credentials (optional).
 
-## Setup
+### Setup
 
 1. Clone the repository
 2. Copy the example env file:
