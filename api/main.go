@@ -9,8 +9,8 @@ import (
 func main() {
 	cfg := server.ServerCfg{
 		Host:         os.Getenv("HOST"),
-		ClientId:     os.Getenv("CLIENT_ID"),
-		ClientSecret: os.Getenv("CLIENT_SECRET"),
+		ClientId:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		Env:          os.Getenv("ENV"),
 		DBPath:       "dev.db",
 	}

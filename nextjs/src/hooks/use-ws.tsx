@@ -21,9 +21,8 @@ export default function useWebSocket(file: File) {
 
   useEffect(() => {
     const p = window.location.protocol === "https:" ? "wss:" : "ws:";
-    console.log(window.location.host);
     const socket = new WebSocket(
-      `${p}//${process.env.NEXT_PUBLIC_HOST?.split("//").at(-1)}/api/ws`
+      `${p}//${process.env.NEXT_PUBLIC_HOST?.split("//").at(-1)!}/api/ws`
     );
     socket.addEventListener("open", handleOpen);
     socket.addEventListener("message", handleMessage);

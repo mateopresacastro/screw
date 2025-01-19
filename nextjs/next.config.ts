@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     reactCompiler: true,
+    serverActions: {
+      allowedOrigins: ["localhost", "localhost:8080"],
+    },
   },
   images: {
     remotePatterns: [

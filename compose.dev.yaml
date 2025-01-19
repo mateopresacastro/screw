@@ -13,8 +13,6 @@ services:
     volumes:
       - ./api:/app
       - data:/app/data
-    ports:
-      - "3000:3000"
 
   nextjs:
     build:
@@ -27,8 +25,6 @@ services:
       - ./nextjs:/app
       - /app/node_modules
       - /app/.next
-    ports:
-      - "4000:4000"
     environment:
       - NODE_ENV=development
 
@@ -40,6 +36,16 @@ services:
       - ./.env
     ports:
       - "8080:80"
+    depends_on:
+      - api
+      - nextjs
+      - grafana
+      - prometheus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   prometheus:
     image: prom/prometheus:latest
@@ -51,7 +57,12 @@ services:
     image: grafana/grafana:latest
     volumes:
       - grafana_data:/var/lib/grafana
-
+    environment:
+      - GF_SERVER_ROOT_URL=http://localhost:8080/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_LOG_LEVEL=warn
+      - GF_LOG_MODE=console
+      - GF_METRICS_ENABLED=false
 volumes:
   data:
   grafana_data:
