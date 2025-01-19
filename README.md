@@ -19,7 +19,11 @@ The audio streams to a `Go` `API` via `WebSocket` connections, where `FFmpeg` pr
 
 ## Overview
 
-![Overview diagram](images/overview.png)
+![Overview diagram](docs/images/overview.png)
+
+## Demo
+
+![Demo of processing multiple audio files](docs/videos/demo.gif)
 
 ## How it works
 
@@ -43,7 +47,7 @@ Key components:
 ## How to run
 
 > [!NOTE]
-> At one point this project was deployed to `AWS` with a `GitHub Actions` pipeline. That's why you'll find `HCL` code in [`/terraform`](/terraform) and CI/CD config in [`.github/workflows/main.yaml`](.github/workflows/main.yaml). I'm no longer running it to avoid costs. If you want to deploy this, you'll need to adapt the configuration for your use case. To try it out locally, follow the instructions below.
+> At one point this project was deployed to `AWS` with a `GitHub Actions` pipeline. That's why you'll find `HCL` code in `/terraform` and `CI/CD` workflow in `.github/workflows/main.yaml`. I'm no longer running it to avoid costs. If you want to deploy this, you'll need to adapt the configuration for your use case. To try it out locally, follow the instructions below.
 
 ### Prerequisites
 
@@ -85,7 +89,7 @@ To setup the dashboard:
 
 You should see this:
 
-![Grafana dashboard](images/grafana.png)
+![Grafana dashboard](docs/images/grafana.png)
 
 ### Dashboard credits
 

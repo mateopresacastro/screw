@@ -1,5 +1,6 @@
+# Disabled
 name: CI/CD
-on: [] # Stopped running CICD as the infra is no longer running
+on: [main]
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
