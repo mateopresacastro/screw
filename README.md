@@ -6,14 +6,40 @@ The audio streams to a `Go` `API` via `WebSocket` connections, where `FFmpeg` pr
 
 Implemented Google's `0Auth2.0` flow with `PKCE` from sractch.
 
+> [!NOTE]
+> This is a learning project. Not a production service.
+
+## Features
+
+- Concurrent processing of up to `5` audio files.
+- Real-time slowed + reverb audio processing using `FFmpeg`.
+- Waveform visualization with `wavesurfer.js`.
+- Google `OAuth2.0` authentication with `PKCE`
+- Performance monitoring via `Grafana`
+
 ## Overview
 
 ![Overview diagram](images/overview.png)
 
+## How it works
+
+From the client you can select up to `5` audio files. For each selected file a new `WebSocket` connection gets created. The `Go` `API` hanldes them concurrenlty. And spawns a new `FFmpeg` process for each. The data flows from the client, through the `API`, trhough `FFmpeg` `stdin`, and gets sent right back from `stdout` to the `WebSocket`. In the clinet the data gets buffered in a `Blob`. Then a new `URL` gets created for that `Blob`. The waveform and playback are enabled by `wavesurfer.js`.
+
+### OAuth2.0
+
+The authentication is implemented using Google's `OAuth2.0` with `PKCE` flow, based on Pilcrow's excellent blog posts. This project adapts and expands his `Next.js` example into `Go`. While there's an official `Go` `OAuth2.0` package available, I decided not to use it for this project.
+
+Key components:
+
+- Custom `PKCE` code challenge generation.
+- `State` parameter validation.
+- Session management using `SQLite`.
+- Token refresh handling.
+
 ## Prerequisites
 
-- Docker and Docker Compose
-- (Optional) Google OAuth2.0 credentials
+- `Docker` and `Docker Compose`
+- Google `OAuth2.0` credentials (optional).
 
 ## Setup
 
@@ -21,10 +47,10 @@ Implemented Google's `0Auth2.0` flow with `PKCE` from sractch.
 2. Copy the example env file:
 
    ```bash
-       cp .env.example .env
+   cp .env.example .env
    ```
 
-3. (Optional) Configure your `OAuth2.0` credentials in `.env`
+3. Configure your `OAuth2.0` credentials in `.env` (optional).
 4. Start the application:
 
    ```bash
