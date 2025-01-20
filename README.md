@@ -23,7 +23,7 @@ The audio streams to a `Go` `API` via `WebSocket` connections, where `FFmpeg` pr
 
 ## Demo
 
-![Demo of processing multiple audio files](docs/videos/demo.gif)
+https://github.com/user-attachments/assets/d834d963-7287-4f32-8dd0-a3527dfc27bc
 
 ## How it works
 
