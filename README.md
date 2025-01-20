@@ -23,15 +23,19 @@ The audio streams to a `Go` `API` via `WebSocket` connections, where `FFmpeg` pr
 
 ## Demo
 
+## Client
+
 https://github.com/user-attachments/assets/d834d963-7287-4f32-8dd0-a3527dfc27bc
 
 ### Audio example
 
-Before:
+Beat produced by me in `2020`.
+
+#### Before
 
 https://github.com/user-attachments/assets/b48dc2ef-3bf1-49f7-93ee-2407e95f2413
 
-After:
+#### After
 
 https://github.com/user-attachments/assets/6007d385-64de-4623-8125-c2dbb9e80ec0
 
