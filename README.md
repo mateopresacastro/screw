@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/d834d963-7287-4f32-8dd0-a3527dfc27bc
 
 ### Audio example
 
-Beat produced in `2020` by me.
+Beat made in `2020` by me.
 
 #### Before
 
