@@ -68,7 +68,7 @@ Key components:
 - Session management using `SQLite`.
 - Token refresh handling.
 
-The logic is in [api/auth/google.go](api/auth/google.go)
+The auth flow is in [api/auth/google.go](api/auth/google.go).
 
 ## How to run
 
