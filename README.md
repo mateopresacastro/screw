@@ -17,7 +17,7 @@ The audio streams to a `Go` `API` via `WebSocket` connections, where `FFmpeg` pr
 - Middleware.
 - Google `OAuth2.0` authentication with `PKCE`
 - Database sessions.
-- Performance monitoring via `Grafana`
+- Performance monitoring via `Grafana`.
 
 ## Overview
 
@@ -94,7 +94,13 @@ Key components:
    make dev
    ```
 
-5. Go to `localhost:8080`
+5. Wait until the `api` container starts:
+
+   ```bash
+   api-1         | 2025/01/20 10:29:55 INFO Server is listening port=3000
+   ```
+
+6. Go to `localhost:8080`.
 
 ## Grafana
 

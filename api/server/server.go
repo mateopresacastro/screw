@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"screw/auth"
-	"screw/hr"
+	"screw/herr"
 	mw "screw/middleware"
 	"screw/session"
 	"screw/store"
@@ -83,11 +83,11 @@ var portStr = fmt.Sprintf(":%d", port)
 
 func (s *server) Start() error {
 	mux := http.NewServeMux()
-	mux.Handle("/api/ws", hr.W(s.ws.Handle))
-	mux.Handle("GET /api/login/google", hr.W(s.google.HandleLogin))
-	mux.Handle("GET /api/login/google/callback", hr.W(s.google.HandleCallBack))
-	mux.Handle("GET /api/login/session", hr.W(s.sessionManager.HandleCurrentSession))
-	mux.Handle("POST /api/logout", hr.W(s.sessionManager.HandleLogout))
+	mux.Handle("/api/ws", herr.W(s.ws.Handle))
+	mux.Handle("GET /api/login/google", herr.W(s.google.HandleLogin))
+	mux.Handle("GET /api/login/google/callback", herr.W(s.google.HandleCallBack))
+	mux.Handle("GET /api/login/session", herr.W(s.sessionManager.HandleCurrentSession))
+	mux.Handle("POST /api/logout", herr.W(s.sessionManager.HandleLogout))
 	mux.Handle("GET /metrics", promhttp.Handler())
 	server := mw.Chain(
 		mux,

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"screw/cryptoutil"
-	"screw/hr"
+	"screw/herr"
 	"screw/session"
 	"screw/store"
 	"strings"
@@ -60,20 +60,20 @@ func NewGoogle(cfg GoogleCgf) *Google {
 	}
 }
 
-func (g *Google) HandleLogin(w http.ResponseWriter, r *http.Request) *hr.Error {
+func (g *Google) HandleLogin(w http.ResponseWriter, r *http.Request) *herr.Error {
 	authorizationURL, err := url.Parse(g.authUrl)
 	if err != nil {
-		return hr.Internal(err, "Failed to parse Google authorization URL")
+		return herr.Internal(err, "Failed to parse Google authorization URL")
 	}
 
 	state, err := cryptoutil.CreateState()
 	if err != nil {
-		return hr.Internal(err, "Failed to create OAuth state")
+		return herr.Internal(err, "Failed to create OAuth state")
 	}
 
 	codeVerifier, err := cryptoutil.CreateCodeVerifier()
 	if err != nil {
-		return hr.Internal(err, "Failed to create code verifier")
+		return herr.Internal(err, "Failed to create code verifier")
 	}
 
 	codeChallenge := cryptoutil.CreateS256CodeChallenge(codeVerifier)
@@ -111,26 +111,26 @@ func (g *Google) HandleLogin(w http.ResponseWriter, r *http.Request) *hr.Error {
 	return nil
 }
 
-func (g *Google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Error {
+func (g *Google) HandleCallBack(w http.ResponseWriter, r *http.Request) *herr.Error {
 	query := r.URL.Query()
 	code := query.Get("code")
 	state := query.Get("state")
 	stateInCookie, err := r.Cookie(g.stateCookieName)
 	if err != nil {
-		return hr.BadRequest(err, "Error getting state cookie")
+		return herr.BadRequest(err, "Error getting state cookie")
 	}
 
 	codeVerifierInCookie, err := r.Cookie(g.codeVerifierCookieName)
 	if err != nil {
-		return hr.BadRequest(err, "Error getting code verifier cookie")
+		return herr.BadRequest(err, "Error getting code verifier cookie")
 	}
 
 	if code == "" || state == "" || stateInCookie.Value == "" || codeVerifierInCookie.Value == "" {
-		return hr.BadRequest(err, "Missing data")
+		return herr.BadRequest(err, "Missing data")
 	}
 
 	if state != stateInCookie.Value {
-		return hr.BadRequest(err, "States differ")
+		return herr.BadRequest(err, "States differ")
 	}
 
 	g.deleteCookies(w)
@@ -144,7 +144,7 @@ func (g *Google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 
 	req, err := http.NewRequest("POST", g.tokenUrl, strings.NewReader(formData.Encode()))
 	if err != nil {
-		return hr.Internal(err, "Failed to create token request")
+		return herr.Internal(err, "Failed to create token request")
 	}
 
 	basicAuth := base64.StdEncoding.EncodeToString([]byte(g.clientID + ":" + g.clientSecret))
@@ -155,28 +155,28 @@ func (g *Google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 
 	tokenResp, err := client.Do(req)
 	if err != nil {
-		return hr.Internal(err, "Failed to execute token request")
+		return herr.Internal(err, "Failed to execute token request")
 	}
 	defer tokenResp.Body.Close()
 
 	if tokenResp.StatusCode != http.StatusOK {
-		return hr.Internal(errors.New("non-200 status code"), "Token endpoint returned non-200 status")
+		return herr.Internal(errors.New("non-200 status code"), "Token endpoint returned non-200 status")
 	}
 
 	var tokenRespData tokenResponse
 	if err := json.NewDecoder(tokenResp.Body).Decode(&tokenRespData); err != nil {
-		return hr.Internal(err, "Failed to decode token response")
+		return herr.Internal(err, "Failed to decode token response")
 	}
 
 	userReq, err := http.NewRequest("GET", g.userInfoUrl, nil)
 	if err != nil {
-		return hr.Internal(err, "Failed to create user info request")
+		return herr.Internal(err, "Failed to create user info request")
 	}
 
 	userReq.Header.Set("Authorization", "Bearer "+tokenRespData.AccessToken)
 	userResp, err := client.Do(userReq)
 	if err != nil {
-		return hr.Internal(err, "Failed to execute user info request")
+		return herr.Internal(err, "Failed to execute user info request")
 	}
 	defer userResp.Body.Close()
 
@@ -189,18 +189,18 @@ func (g *Google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 	}
 
 	if err := json.NewDecoder(userResp.Body).Decode(&userData); err != nil {
-		return hr.Internal(err, "Failed to decode user info response")
+		return herr.Internal(err, "Failed to decode user info response")
 	}
 
 	if !userData.VerifiedEmail {
-		return hr.BadRequest(errors.New("email not verified"), "User email not verified")
+		return herr.BadRequest(errors.New("email not verified"), "User email not verified")
 	}
 
 	existingUser, err := g.store.UserByGoogleID(userData.ID)
 	if err == nil && existingUser != nil {
 		_, err := g.sessionMgr.CreateSession(w, existingUser.ID)
 		if err != nil {
-			return hr.Internal(err, "Failed to create session for existing user")
+			return herr.Internal(err, "Failed to create session for existing user")
 		}
 
 		http.Redirect(w, r, g.host+"/about", http.StatusFound)
@@ -208,7 +208,7 @@ func (g *Google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 	}
 
 	if !errors.Is(err, store.ErrUserNotFound) {
-		return hr.Internal(err, "Error reading user from db")
+		return herr.Internal(err, "Error reading user from db")
 	}
 
 	user := &store.User{
@@ -220,12 +220,12 @@ func (g *Google) HandleCallBack(w http.ResponseWriter, r *http.Request) *hr.Erro
 
 	newUserID, err := g.store.CreateUser(user)
 	if err != nil {
-		return hr.Internal(err, "Failed to create new user")
+		return herr.Internal(err, "Failed to create new user")
 	}
 
 	_, err = g.sessionMgr.CreateSession(w, newUserID)
 	if err != nil {
-		return hr.Internal(err, "Failed to create session for new user")
+		return herr.Internal(err, "Failed to create session for new user")
 	}
 
 	http.Redirect(w, r, g.host+"/about", http.StatusPermanentRedirect)

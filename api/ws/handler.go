@@ -9,7 +9,7 @@ import (
 	"math"
 	"net/http"
 	"screw/ffmpeg"
-	"screw/hr"
+	"screw/herr"
 	"screw/store"
 	"sync"
 	"time"
@@ -50,35 +50,35 @@ func New(store store.Store) *WS {
 	return &WS{store: store}
 }
 
-func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *hr.Error {
+func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *herr.Error {
 	slog.Info("New websocket connection - trying to upgrade")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return hr.Internal(err, "Failed to upgrade websocket connection")
+		return herr.Internal(err, "Failed to upgrade websocket connection")
 	}
 	defer conn.Close()
 	slog.Info("Upgraded")
 
 	err = conn.NetConn().SetDeadline(time.Now().Add(5 * time.Minute))
 	if err != nil {
-		hr.WS(conn, err, "Connection deadline error")
+		herr.WS(conn, err, "Connection deadline error")
 		return nil
 	}
 
 	messageType, message, err := conn.ReadMessage()
 	if err != nil {
-		hr.WS(conn, err, "Error reading first message")
+		herr.WS(conn, err, "Error reading first message")
 		return nil
 	}
 
 	if messageType != websocket.TextMessage {
-		hr.WS(conn, err, "First message must be metadata")
+		herr.WS(conn, err, "First message must be metadata")
 		return nil
 	}
 
 	var meta Metadata
 	if err := json.Unmarshal(message, &meta); err != nil {
-		hr.WS(conn, err, "Error initializing ffmpeg")
+		herr.WS(conn, err, "Error initializing ffmpeg")
 		return nil
 	}
 
@@ -89,7 +89,7 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *hr.Error {
 
 	ffmpeg, err := ffmpeg.New(ctx)
 	if err != nil {
-		hr.WS(conn, err, "Error initializing ffmpeg")
+		herr.WS(conn, err, "Error initializing ffmpeg")
 		return nil
 	}
 
@@ -109,13 +109,13 @@ func (ws *WS) Handle(w http.ResponseWriter, r *http.Request) *hr.Error {
 		cancel()
 		<-readDone
 		<-writeDone
-		hr.WS(conn, err, "Stream processing error")
+		herr.WS(conn, err, "Stream processing error")
 		return nil
 	case <-ffmpeg.Done:
 		cancel()
 		<-readDone
 		<-writeDone
-		hr.WSClose(conn, "Processing complete")
+		herr.WSClose(conn, "Processing complete")
 		return nil
 	case <-ctx.Done():
 		<-readDone
