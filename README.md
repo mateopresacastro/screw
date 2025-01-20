@@ -11,7 +11,7 @@ The audio streams to a `Go` `API` via `WebSocket` connections, where `FFmpeg` pr
 
 ## Features
 
-- Concurrent processing of up to `5` audio files.
+- Concurrent processing of audio files.
 - Real-time slowed + reverb audio processing using `FFmpeg`.
 - In memory rate limiting.
 - Middleware.
@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/d834d963-7287-4f32-8dd0-a3527dfc27bc
 
 ### Audio example
 
-Beat made in `2020` by me.
+Beat made by me in `2020`.
 
 #### Before
 
@@ -68,6 +68,8 @@ Key components:
 - Session management using `SQLite`.
 - Token refresh handling.
 
+The logic is in [api/auth/google.go](api/auth/google.go)
+
 ## How to run
 
 > [!NOTE]
@@ -100,7 +102,7 @@ Key components:
    api-1         | 2025/01/20 10:29:55 INFO Server is listening port=3000
    ```
 
-6. Go to `localhost:8080`.
+6. Navigate to `localhost:8080`.
 
 ## Grafana
 

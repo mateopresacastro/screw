@@ -24,10 +24,12 @@ export default function useWebSocket(file: File) {
     const socket = new WebSocket(
       `${p}//${process.env.NEXT_PUBLIC_HOST?.split("//").at(-1)!}/api/ws`
     );
-    socket.addEventListener("open", handleOpen);
-    socket.addEventListener("message", handleMessage);
-    socket.addEventListener("close", handleDisconnect);
-    socket.addEventListener("error", handleError);
+    const controller = new AbortController();
+    const signal = controller.signal;
+    socket.addEventListener("open", handleOpen, { signal });
+    socket.addEventListener("message", handleMessage, { signal });
+    socket.addEventListener("close", handleDisconnect, { signal });
+    socket.addEventListener("error", handleError, { signal });
 
     async function handleOpen() {
       const message = {
@@ -107,10 +109,7 @@ export default function useWebSocket(file: File) {
 
     return () => {
       if (socket.readyState === WebSocket.OPEN) socket.close();
-      socket.removeEventListener("open", handleOpen);
-      socket.removeEventListener("message", handleMessage);
-      socket.removeEventListener("close", handleDisconnect);
-      socket.removeEventListener("error", handleError);
+      controller.abort();
     };
   }, [file]);
 
