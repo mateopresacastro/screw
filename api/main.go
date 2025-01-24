@@ -1,23 +1,20 @@
 package main
 
 import (
-	"log/slog"
+	"context"
 	"os"
 	"screw/server"
 )
 
 func main() {
 	cfg := server.ServerCfg{
-		Host:         os.Getenv("HOST"),
+		Addr:         os.Getenv("ADDR"),
 		ClientId:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		Env:          os.Getenv("ENV"),
 		DBPath:       "dev.db",
 	}
 	s := server.New(cfg)
-	err := s.Start()
-	if err != nil {
-		slog.Error("Application failed", "err", err)
-		os.Exit(1)
-	}
+	ctx := context.Background()
+	s.Start(ctx)
 }

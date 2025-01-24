@@ -1,23 +1,27 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"screw/auth"
 	"screw/herr"
 	mw "screw/middleware"
 	"screw/session"
 	"screw/store"
 	"screw/ws"
+	"sync"
+	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type server struct {
-	host            string
+	addr            string
 	clientId        string
 	clientSecret    string
 	env             string
@@ -30,7 +34,7 @@ type server struct {
 }
 
 type ServerCfg struct {
-	Host         string
+	Addr         string
 	ClientId     string
 	ClientSecret string
 	Env          string
@@ -47,22 +51,22 @@ func New(cfg ServerCfg) *server {
 	googleCfg := auth.GoogleCgf{
 		ClientID:     cfg.ClientId,
 		ClientSecret: cfg.ClientSecret,
-		Host:         cfg.Host,
-		CallbackURL:  cfg.Host + "/api/login/google/callback",
+		Host:         cfg.Addr,
+		CallbackURL:  cfg.Addr + "/api/login/google/callback",
 		SessionMgr:   sessionManager,
 		Store:        store,
 	}
 	google := auth.NewGoogle(googleCfg)
 	CORSAllowed := map[string]bool{
-		cfg.Host + ":3001": true,
-		cfg.Host:           true,
+		cfg.Addr + ":3001": true,
+		cfg.Addr:           true,
 	}
 	protectedRoutes := map[string]bool{
 		"/api/login/session": true,
 		"/api/logout":        true,
 	}
 	return &server{
-		host:            cfg.Host,
+		addr:            cfg.Addr,
 		clientId:        cfg.ClientId,
 		clientSecret:    cfg.ClientSecret,
 		env:             cfg.Env,
@@ -75,13 +79,7 @@ func New(cfg ServerCfg) *server {
 	}
 }
 
-const (
-	port = 3000
-)
-
-var portStr = fmt.Sprintf(":%d", port)
-
-func (s *server) Start() error {
+func (s *server) Start(ctx context.Context) {
 	mux := http.NewServeMux()
 	mux.Handle("/api/ws", herr.W(s.ws.Handle))
 	mux.Handle("GET /api/login/google", herr.W(s.google.HandleLogin))
@@ -98,6 +96,29 @@ func (s *server) Start() error {
 		mw.Metrics(),
 	)
 
-	slog.Info("Server is listening", "port", port)
-	return http.ListenAndServe(portStr, server)
+	httpServer := &http.Server{
+		Addr:    s.addr,
+		Handler: server,
+	}
+
+	go func() {
+		slog.Info("Server is listening", "addr", s.addr)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
+		}
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+		shutdownCtx := context.Background()
+		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, 10*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			fmt.Fprintf(os.Stderr, "error shutting down http server: %s\n", err)
+		}
+	}()
+	wg.Wait()
 }
